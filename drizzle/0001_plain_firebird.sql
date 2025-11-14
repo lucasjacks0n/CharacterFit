@@ -1,0 +1,1 @@
+ALTER TABLE "clothing_items" ALTER COLUMN "category" DROP NOT NULL;
