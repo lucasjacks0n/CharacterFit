@@ -151,9 +151,19 @@ export default function OutfitsListPage() {
                 key={outfit.id}
                 className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
-                {/* Outfit Image or Items Preview */}
-                {outfit.items && outfit.items.length > 0 && (
-                  <div className="bg-gray-100 p-4">
+                {/* Outfit Collage or Items Preview */}
+                <div className="bg-gray-100 p-4">
+                  {outfit.imageUrl ? (
+                    /* Show collage if available */
+                    <div className="aspect-[4/5]">
+                      <img
+                        src={outfit.imageUrl}
+                        alt={outfit.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </div>
+                  ) : outfit.items && outfit.items.length > 0 ? (
+                    /* Fallback to item grid */
                     <div className="grid grid-cols-3 gap-2">
                       {outfit.items.slice(0, 3).map((item, idx) => (
                         <div key={idx} className="aspect-square">
@@ -178,8 +188,13 @@ export default function OutfitsListPage() {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    /* No image or items */
+                    <div className="aspect-[4/5] bg-gray-200 rounded flex items-center justify-center">
+                      <span className="text-gray-400">No image</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Outfit Details */}
                 <div className="p-6">

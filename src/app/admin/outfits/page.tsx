@@ -149,7 +149,19 @@ export default function CreateOutfitPage() {
       }
 
       const result = await response.json();
-      setMessage(`✅ Outfit "${result.outfit.name}" created successfully!`);
+      const outfitId = result.outfit.id;
+      setMessage(`✅ Outfit created! Generating collage...`);
+
+      // Automatically generate collage
+      try {
+        await fetch(`/api/outfits/${outfitId}/generate-collage`, {
+          method: "POST",
+        });
+        setMessage(`✅ Outfit "${result.outfit.name}" created with collage!`);
+      } catch (collageError) {
+        console.error("Failed to generate collage:", collageError);
+        setMessage(`✅ Outfit created, but collage generation failed. You can generate it manually from the edit page.`);
+      }
 
       // Reset form
       setOutfitName("");
