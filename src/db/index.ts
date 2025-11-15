@@ -7,7 +7,11 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Create postgres connection with SSL certificate from env
+// Configured for serverless with minimal connections
 const client = postgres(process.env.DATABASE_URL, {
+  max: 1, // Only 1 connection per serverless instance
+  idle_timeout: 20, // Close idle connections after 20 seconds
+  max_lifetime: 60 * 30, // Close connections after 30 minutes
   ssl: process.env.DATABASE_CA_CERT
     ? { ca: process.env.DATABASE_CA_CERT }
     : undefined,
