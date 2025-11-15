@@ -8,6 +8,7 @@ import fs from "fs/promises";
 import path from "path";
 import https from "https";
 import http from "http";
+import { uploadToGoogleStorage } from "@/lib/google-storage";
 
 const execAsync = promisify(exec);
 
@@ -92,18 +93,21 @@ export async function POST(
     // Run arrange.py directly (skip extraction)
     console.log("Running arrange.py...");
     const collagePath = path.join(process.cwd(), "collage");
-    const publicCollagesDir = path.join(process.cwd(), "public", "collages");
-    await fs.mkdir(publicCollagesDir, { recursive: true });
 
     const collageFilename = `outfit-${outfitId}.png`;
-    const collageOutputPath = path.join(publicCollagesDir, collageFilename);
+    const tempCollageOutputPath = path.join(tempDir, collageFilename);
 
     await execAsync(
-      `cd "${collagePath}" && ./ve/bin/python arrange.py "${imagesDir}" "${collageOutputPath}"`
+      `cd "${collagePath}" && ./ve/bin/python arrange.py "${imagesDir}" "${tempCollageOutputPath}"`
     );
 
-    // Update outfit with collage URL
-    const collageUrl = `/collages/${collageFilename}`;
+    // Upload to Google Cloud Storage
+    console.log("Uploading collage to Google Cloud Storage...");
+    const gcsPath = `collages/${collageFilename}`;
+    const collageUrl = await uploadToGoogleStorage(tempCollageOutputPath, gcsPath);
+    console.log(`Uploaded to: ${collageUrl}`);
+
+    // Update outfit with Google Storage URL
     await db
       .update(outfits)
       .set({

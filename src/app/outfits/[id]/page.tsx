@@ -112,7 +112,7 @@ export default async function OutfitPage({
                   className="w-full h-auto"
                 />
               ) : (
-                <div className="aspect-[4/5] bg-gray-200 flex items-center justify-center">
+                <div className="aspect-4/5 bg-gray-200 flex items-center justify-center">
                   <span className="text-gray-400">No collage available</span>
                 </div>
               )}
@@ -157,7 +157,7 @@ export default async function OutfitPage({
                   >
                     <div className="flex">
                       {/* Item Image */}
-                      <div className="w-32 h-32 flex-shrink-0 bg-gray-100">
+                      <div className="w-32 h-32 shrink-0 bg-gray-100">
                         {item.imageUrl ? (
                           <img
                             src={item.imageUrl}

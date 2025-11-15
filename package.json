@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.35.1",
+    "@google-cloud/storage": "^7.17.3",
     "drizzle-orm": "^0.44.7",
     "next": "16.0.3",
     "pg": "^8.16.3",
