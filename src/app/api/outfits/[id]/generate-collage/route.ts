@@ -37,6 +37,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Disable collage generation in production
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: "Collage generation is not available in production" },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await params;
     const outfitId = parseInt(id);

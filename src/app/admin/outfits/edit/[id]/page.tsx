@@ -501,16 +501,18 @@ export default function EditOutfitPage() {
               {isSaving ? "Saving Changes..." : "Save Changes"}
             </button>
 
-            {/* Generate Collage Button */}
-            <button
-              onClick={handleGenerateCollage}
-              disabled={isGeneratingCollage || selectedItems.length === 0}
-              className="w-full px-6 py-3 bg-orange-600 text-white font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isGeneratingCollage
-                ? "Generating Collage..."
-                : "Generate Collage"}
-            </button>
+            {/* Generate Collage Button - Only in development */}
+            {process.env.NODE_ENV !== 'production' && (
+              <button
+                onClick={handleGenerateCollage}
+                disabled={isGeneratingCollage || selectedItems.length === 0}
+                className="w-full px-6 py-3 bg-orange-600 text-white font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isGeneratingCollage
+                  ? "Generating Collage..."
+                  : "Generate Collage"}
+              </button>
+            )}
 
             {/* Collage Preview */}
             {collageUrl && (
