@@ -178,12 +178,6 @@ export default async function OutfitPage({
                         </h3>
 
                         <div className="space-y-1 text-sm text-gray-600">
-                          {item.brand && (
-                            <p>
-                              <span className="font-medium">Brand:</span>{" "}
-                              {item.brand}
-                            </p>
-                          )}
                           {item.color && (
                             <p>
                               <span className="font-medium">Color:</span>{" "}
@@ -196,17 +190,18 @@ export default async function OutfitPage({
                               {item.category}
                             </p>
                           )}
-                          {item.price && (
-                            <p className="text-lg font-semibold text-gray-900 mt-2">
-                              ${item.price}
-                            </p>
-                          )}
                         </div>
 
                         {/* View Product Button */}
                         {item.productUrl && (
                           <a
-                            href={item.productUrl}
+                            href={
+                              item.productUrl.includes("amazon.com")
+                                ? `${item.productUrl}${
+                                    item.productUrl.includes("?") ? "&" : "?"
+                                  }tag=characterfits-20`
+                                : item.productUrl
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-3 inline-block px-4 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors"
