@@ -1,3 +1,2 @@
 # Exclude Python collage generation from Vercel builds
 collage/
-ca-certificate.crt

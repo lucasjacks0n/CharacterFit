@@ -1,17 +1,16 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
-import * as fs from 'fs';
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
-// Create postgres connection with SSL
+// Create postgres connection with SSL certificate from env
 const client = postgres(process.env.DATABASE_URL, {
-  ssl: {
-    ca: fs.readFileSync('./ca-certificate.crt').toString(),
-  },
+  ssl: process.env.DATABASE_CA_CERT
+    ? { ca: process.env.DATABASE_CA_CERT }
+    : undefined,
 });
 
 // Create drizzle instance

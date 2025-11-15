@@ -24,9 +24,6 @@
 .DS_Store
 *.pem
 
-# database certificates
-ca-certificate.crt
-
 # Python collage generation (development only)
 /collage/
 
