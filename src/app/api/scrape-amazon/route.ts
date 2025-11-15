@@ -23,9 +23,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize URL - add https:// if missing protocol
+    let normalizedUrl = productUrl.trim();
+    if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+      normalizedUrl = `https://${normalizedUrl}`;
+    }
+
     // Scrape the product
-    console.log("Scraping product:", productUrl);
-    const scrapedData = await scrapeAmazonProduct(productUrl);
+    console.log("Scraping product:", normalizedUrl);
+    const scrapedData = await scrapeAmazonProduct(normalizedUrl);
 
     // You can optionally save to database immediately
     // or return the data to let the user review/edit first
@@ -40,10 +46,10 @@ export async function POST(request: NextRequest) {
           category: category || null,
           subcategory: subcategory || null,
           color: scrapedData.color || null,
-          material: scrapedData.material || null,
+          material: null, // Will be extracted via LLM later
           description: scrapedData.description || null,
           price: scrapedData.price?.toString() || null,
-          productUrl,
+          productUrl: normalizedUrl,
           imageUrl: scrapedData.imageUrl || null,
         })
         .returning();

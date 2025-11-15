@@ -1,7 +1,7 @@
 import { scrapeAmazonProduct } from "./src/lib/scrapers/amazon-scraper";
 
 const url =
-  "https://www.amazon.com/dp/B0CVX4DV63/";
+  "https://www.amazon.com/dp/B0CVX4DV63";
 
 async function testScraper() {
   console.log("Starting scraper test...");
@@ -15,7 +15,6 @@ async function testScraper() {
     console.log("Brand:", data.brand);
     console.log("Price:", data.price);
     console.log("Color:", data.color || "NOT FOUND");
-    console.log("Material:", data.material || "NOT FOUND");
     console.log("Image URL:", data.imageUrl);
     console.log("\nDescription:");
     console.log(data.description || "NOT FOUND");
