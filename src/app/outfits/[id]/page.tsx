@@ -22,6 +22,7 @@ interface OutfitWithItems {
   occasion: string | null;
   season: string | null;
   imageUrl: string | null;
+  inspirationPhotoUrl: string | null;
   createdAt: Date;
   items: ClothingItem[];
 }
@@ -102,18 +103,34 @@ export default async function OutfitPage({
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Collage Image */}
+          {/* Left Column - Inspiration Photo */}
           <div>
             <div className="bg-white rounded-lg shadow-sm overflow-hidden sticky top-8">
-              {outfitWithItems.imageUrl ? (
-                <img
-                  src={outfitWithItems.imageUrl}
-                  alt={outfitWithItems.name}
-                  className="w-full h-auto"
-                />
+              {outfitWithItems.inspirationPhotoUrl ? (
+                <div>
+                  <img
+                    src={outfitWithItems.inspirationPhotoUrl}
+                    alt={outfitWithItems.name}
+                    className="w-full h-auto"
+                  />
+                  <div className="px-6 pt-2 pb-0">
+                    <p className="text-xs text-gray-500 font-medium">Inspiration Photo</p>
+                  </div>
+                </div>
+              ) : outfitWithItems.imageUrl ? (
+                <div>
+                  <img
+                    src={outfitWithItems.imageUrl}
+                    alt={outfitWithItems.name}
+                    className="w-full h-auto"
+                  />
+                  <div className="px-6 pt-2 pb-0">
+                    <p className="text-xs text-gray-500 font-medium">Generated Collage</p>
+                  </div>
+                </div>
               ) : (
                 <div className="aspect-4/5 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400">No collage available</span>
+                  <span className="text-gray-400">No photo available</span>
                 </div>
               )}
 

@@ -15,6 +15,13 @@
       "when": 1763107186494,
       "tag": "0001_plain_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763270965522,
+      "tag": "0002_last_captain_flint",
+      "breakpoints": true
     }
   ]
 }

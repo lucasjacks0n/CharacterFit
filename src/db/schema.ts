@@ -46,7 +46,8 @@ export const outfits = pgTable("outfits", {
   description: text("description"),
   occasion: varchar("occasion", { length: 100 }), // e.g., 'casual', 'formal', 'work', 'date'
   season: varchar("season", { length: 50 }), // e.g., 'spring', 'summer', 'fall', 'winter'
-  imageUrl: text("image_url"), // optional full outfit photo
+  imageUrl: text("image_url"), // generated collage photo
+  inspirationPhotoUrl: text("inspiration_photo_url"), // original inspiration/costume photo
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

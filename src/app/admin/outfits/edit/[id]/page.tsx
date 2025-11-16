@@ -25,6 +25,9 @@ export default function EditOutfitPage() {
   const [outfitDescription, setOutfitDescription] = useState("");
   const [occasion, setOccasion] = useState("");
   const [season, setSeason] = useState("");
+  const [inspirationPhoto, setInspirationPhoto] = useState<File | null>(null);
+  const [inspirationPhotoUrl, setInspirationPhotoUrl] = useState<string>("");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ClothingItem[]>([]);
@@ -55,6 +58,7 @@ export default function EditOutfitPage() {
         setSeason(data.season || "");
         setSelectedItems(data.items || []);
         setCollageUrl(data.imageUrl || null);
+        setInspirationPhotoUrl(data.inspirationPhotoUrl || "");
       } else {
         setMessage("❌ Failed to load outfit");
       }
@@ -149,6 +153,39 @@ export default function EditOutfitPage() {
     }
   };
 
+  // Handle inspiration photo upload
+  const handleInspirationPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setInspirationPhoto(file);
+    setIsUploadingPhoto(true);
+    setMessage("Uploading inspiration photo...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload/inspiration-photo", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload photo");
+      }
+
+      const result = await response.json();
+      setInspirationPhotoUrl(result.url);
+      setMessage("✅ Inspiration photo uploaded!");
+    } catch (error) {
+      setMessage("❌ Failed to upload photo: " + (error as Error).message);
+      setInspirationPhoto(null);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   // Update outfit
   const handleUpdateOutfit = async () => {
     if (!outfitName.trim()) {
@@ -176,6 +213,7 @@ export default function EditOutfitPage() {
           occasion: occasion || null,
           season: season || null,
           itemIds: selectedItems.map((item) => item.id),
+          inspirationPhotoUrl: inspirationPhotoUrl || null,
         }),
       });
 
@@ -338,6 +376,33 @@ export default function EditOutfitPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                     />
                   </div>
+                </div>
+
+                {/* Inspiration Photo Upload */}
+                <div>
+                  <label htmlFor="inspirationPhoto" className="block text-sm font-medium text-gray-700 mb-1">
+                    Inspiration Photo
+                  </label>
+                  <input
+                    type="file"
+                    id="inspirationPhoto"
+                    accept="image/*"
+                    onChange={handleInspirationPhotoChange}
+                    disabled={isUploadingPhoto}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                  />
+                  {isUploadingPhoto && (
+                    <p className="text-sm text-gray-600 mt-1">Uploading...</p>
+                  )}
+                  {inspirationPhotoUrl && (
+                    <div className="mt-2">
+                      <img
+                        src={inspirationPhotoUrl}
+                        alt="Inspiration"
+                        className="w-32 h-32 object-cover rounded border border-gray-300"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,0 +1,1 @@
+ALTER TABLE "outfits" ADD COLUMN "inspiration_photo_url" text;

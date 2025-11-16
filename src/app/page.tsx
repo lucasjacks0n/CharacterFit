@@ -12,6 +12,7 @@ interface Outfit {
   occasion: string | null;
   season: string | null;
   imageUrl: string | null;
+  inspirationPhotoUrl: string | null;
   items: {
     id: number;
     title: string;
@@ -102,9 +103,18 @@ export default async function Home() {
                 href={`/outfits/${outfit.id}`}
                 className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
               >
-                {/* Outfit Collage or Items Preview */}
+                {/* Outfit Photo or Items Preview */}
                 <div className="bg-gray-100 p-4">
-                  {outfit.imageUrl ? (
+                  {outfit.inspirationPhotoUrl ? (
+                    /* Show inspiration photo if available */
+                    <div className="aspect-[4/5]">
+                      <img
+                        src={outfit.inspirationPhotoUrl}
+                        alt={outfit.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </div>
+                  ) : outfit.imageUrl ? (
                     /* Show collage if available */
                     <div className="aspect-[4/5]">
                       <img
