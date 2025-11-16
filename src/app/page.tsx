@@ -199,11 +199,6 @@ export default async function Home() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {outfit.name}
                   </h3>
-                  {outfit.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {outfit.description}
-                    </p>
-                  )}
                   <div className="flex flex-wrap gap-2">
                     {outfit.occasion && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">

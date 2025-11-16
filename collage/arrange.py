@@ -207,8 +207,8 @@ def merge_with_inspiration(inspiration_path, collage_img, bounding_boxes, gap=40
     """
     Merge inspiration photo (left) with clothing collage (right).
 
-    Inspiration photo is zoomed/cropped to fill 800x1000 (matching collage size).
-    Uses center crop to maintain focus.
+    Inspiration photo is scaled to fit within 800x1000 (matching collage size).
+    Uses contain behavior - entire image visible, scaled as large as possible.
 
     Args:
         inspiration_path: Path to the inspiration photo
@@ -229,25 +229,26 @@ def merge_with_inspiration(inspiration_path, collage_img, bounding_boxes, gap=40
     target_width = 800
     target_height = 1000
 
-    # Calculate scale to fill the target area (cover behavior)
-    # Scale so the smaller dimension fits, then crop the overflow
+    # Calculate scale to fit within the target area (contain behavior)
+    # Scale so the entire image fits, maintaining aspect ratio
     scale_width = target_width / inspiration.width
     scale_height = target_height / inspiration.height
-    scale = max(scale_width, scale_height)  # Use max to fill/cover
+    scale = min(scale_width, scale_height)  # Use min to contain/fit
 
-    # Resize with the fill scale
+    # Resize to fit within bounds
     new_width = int(inspiration.width * scale)
     new_height = int(inspiration.height * scale)
     inspiration_scaled = inspiration.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    print(f"Inspiration photo scaled to {new_width}x{new_height}")
+    print(f"Inspiration photo scaled to {new_width}x{new_height} (fit within {target_width}x{target_height})")
 
-    # Center crop to target size
-    left = (new_width - target_width) // 2
-    top = (new_height - target_height) // 2
-    right = left + target_width
-    bottom = top + target_height
-    inspiration_cropped = inspiration_scaled.crop((left, top, right, bottom))
-    print(f"Inspiration photo cropped to {target_width}x{target_height} (center crop)")
+    # Create a white background canvas of target size
+    inspiration_canvas = Image.new("RGBA", (target_width, target_height), (255, 255, 255, 255))
+
+    # Center the scaled image on the canvas
+    paste_x = (target_width - new_width) // 2
+    paste_y = (target_height - new_height) // 2
+    inspiration_canvas.paste(inspiration_scaled, (paste_x, paste_y), inspiration_scaled)
+    print(f"Inspiration photo centered at ({paste_x}, {paste_y})")
 
     # Collage is already 800x1000
     collage_width = collage_img.width
@@ -262,9 +263,9 @@ def merge_with_inspiration(inspiration_path, collage_img, bounding_boxes, gap=40
     # Create white canvas
     merged = Image.new("RGBA", (total_width, canvas_height), (255, 255, 255, 255))
 
-    # Paste inspiration photo on left (no vertical offset needed, same height)
-    merged.paste(inspiration_cropped, (0, 0), inspiration_cropped)
-    print(f"Pasted inspiration at (0, 0)")
+    # Paste inspiration canvas on left (no vertical offset needed, same height)
+    merged.paste(inspiration_canvas, (0, 0), inspiration_canvas)
+    print(f"Pasted inspiration canvas at (0, 0)")
 
     # Paste collage on right (after gap)
     collage_x = target_width + gap

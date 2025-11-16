@@ -36,7 +36,6 @@ export default function EditOutfitPage() {
   const [amazonUrl, setAmazonUrl] = useState("");
   const [isScraping, setIsScraping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingCollage, setIsGeneratingCollage] = useState(false);
   const [isDeletingCollage, setIsDeletingCollage] = useState(false);
   const [message, setMessage] = useState("");
@@ -99,6 +98,48 @@ export default function EditOutfitPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Auto-save when fields change
+  useEffect(() => {
+    // Don't auto-save on initial load
+    if (isLoading) return;
+
+    // Don't auto-save if name is empty
+    if (!outfitName.trim()) return;
+
+    const timer = setTimeout(() => {
+      autoSave();
+    }, 1000); // Wait 1 second after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [outfitName, outfitDescription, occasion, season, selectedItems]);
+
+  const autoSave = async () => {
+    if (!outfitName.trim() || selectedItems.length === 0) return;
+
+    try {
+      await fetch(`/api/outfits/${outfitId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: outfitName,
+          description: outfitDescription || null,
+          occasion: occasion || null,
+          season: season || null,
+          itemIds: selectedItems.map((item) => item.id),
+          inspirationPhotoUrl: inspirationPhotoUrl || null,
+        }),
+      });
+
+      setMessage("✅ Auto-saved");
+      // Clear message after 2 seconds
+      setTimeout(() => setMessage(""), 2000);
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    }
+  };
 
   // Add item to outfit
   const addItemToOutfit = (item: ClothingItem) => {
@@ -207,51 +248,6 @@ export default function EditOutfitPage() {
       setInspirationPhoto(null);
     } finally {
       setIsUploadingPhoto(false);
-    }
-  };
-
-  // Update outfit
-  const handleUpdateOutfit = async () => {
-    if (!outfitName.trim()) {
-      setMessage("Please enter an outfit name");
-      return;
-    }
-
-    if (selectedItems.length === 0) {
-      setMessage("Please add at least one item to the outfit");
-      return;
-    }
-
-    setIsSaving(true);
-    setMessage("Updating outfit...");
-
-    try {
-      const response = await fetch(`/api/outfits/${outfitId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: outfitName,
-          description: outfitDescription || null,
-          occasion: occasion || null,
-          season: season || null,
-          itemIds: selectedItems.map((item) => item.id),
-          inspirationPhotoUrl: inspirationPhotoUrl || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.details || "Failed to update outfit");
-      }
-
-      const result = await response.json();
-      setMessage(`✅ Outfit "${result.outfit.name}" updated successfully!`);
-    } catch (error) {
-      setMessage("❌ Error: " + (error as Error).message);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -623,17 +619,6 @@ export default function EditOutfitPage() {
                 </div>
               )}
             </div>
-
-            {/* Save Button */}
-            <button
-              onClick={handleUpdateOutfit}
-              disabled={
-                isSaving || !outfitName.trim() || selectedItems.length === 0
-              }
-              className="w-full px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSaving ? "Saving Changes..." : "Save Changes"}
-            </button>
 
             {/* Collage Management - Only in development */}
             {process.env.NODE_ENV !== 'production' && (

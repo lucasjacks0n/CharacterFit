@@ -39,10 +39,14 @@ export function OutfitContent({ outfit }: OutfitContentProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">CharacterFits</h1>
+            <p className="text-gray-600 mt-1">Character Costume & Cosplay Builder</p>
+          </div>
           <Link
             href="/"
-            className="inline-flex items-center text-green-600 hover:text-green-700 mb-4"
+            className="inline-flex items-center text-green-600 hover:text-green-700"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -59,10 +63,6 @@ export function OutfitContent({ outfit }: OutfitContentProps) {
             </svg>
             Back to Home
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">{outfit.name}</h1>
-          {outfit.description && (
-            <p className="text-gray-600 mt-2">{outfit.description}</p>
-          )}
         </div>
       </header>
 
@@ -72,7 +72,7 @@ export function OutfitContent({ outfit }: OutfitContentProps) {
           {/* Left Column - Outfit Collage */}
           <div>
             <div className="bg-white rounded-lg shadow-sm sticky top-8">
-              <div className="overflow-hidden rounded-lg">
+              <div className="overflow-hidden rounded-t-lg">
                 {outfit.imageUrl ? (
                   <ClickableCollage
                     imageUrl={outfit.imageUrl}
@@ -86,6 +86,16 @@ export function OutfitContent({ outfit }: OutfitContentProps) {
                   <div className="aspect-4/5 bg-gray-200 flex items-center justify-center">
                     <span className="text-gray-400">No collage available</span>
                   </div>
+                )}
+              </div>
+
+              {/* Outfit Title and Description */}
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {outfit.name}
+                </h2>
+                {outfit.description && (
+                  <p className="text-gray-600">{outfit.description}</p>
                 )}
               </div>
 
@@ -130,6 +140,8 @@ export function OutfitContent({ outfit }: OutfitContentProps) {
                         ? "bg-orange-50"
                         : "bg-white hover:shadow-md"
                     }`}
+                    onMouseEnter={() => setHoveredItemId(item.id)}
+                    onMouseLeave={() => setHoveredItemId(null)}
                   >
                     <div className="flex">
                       {/* Item Details */}
