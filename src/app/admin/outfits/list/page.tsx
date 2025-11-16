@@ -118,7 +118,10 @@ export default function OutfitsListPage() {
           successCount++;
         } else {
           const error = await response.json();
-          console.error(`Failed to regenerate collage for ${outfit.name}:`, error);
+          console.error(
+            `Failed to regenerate collage for ${outfit.name}:`,
+            error
+          );
           failCount++;
         }
       } catch (error) {
@@ -169,7 +172,9 @@ export default function OutfitsListPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Outfits</h1>
-            <p className="text-gray-600 mt-1">Manage your outfit combinations</p>
+            <p className="text-gray-600 mt-1">
+              Manage your outfit combinations
+            </p>
           </div>
           <div className="flex gap-3">
             <button
@@ -177,7 +182,9 @@ export default function OutfitsListPage() {
               disabled={isRegeneratingAll || outfits.length === 0}
               className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isRegeneratingAll ? "Regenerating..." : "Regenerate All Collages"}
+              {isRegeneratingAll
+                ? "Regenerating..."
+                : "Regenerate All Collages"}
             </button>
             <Link
               href="/admin/outfits"
@@ -269,7 +276,7 @@ export default function OutfitsListPage() {
                 <div className="bg-gray-100 p-4">
                   {outfit.imageUrl ? (
                     /* Show collage (merged with inspiration) if available */
-                    <div className="aspect-[4/5]">
+                    <div className="w-full">
                       <img
                         src={outfit.imageUrl}
                         alt={outfit.name}
@@ -289,7 +296,9 @@ export default function OutfitsListPage() {
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-200 rounded flex items-center justify-center">
-                              <span className="text-gray-400 text-xs">No image</span>
+                              <span className="text-gray-400 text-xs">
+                                No image
+                              </span>
                             </div>
                           )}
                         </div>
