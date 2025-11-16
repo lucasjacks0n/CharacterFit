@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { scrapeAmazonProduct } from "@/lib/scrapers/amazon-scraper";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
+import { normalizeUrl } from "@/lib/url-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,10 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize URL - add https:// if missing protocol
-    let normalizedUrl = productUrl.trim();
-    if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
-      normalizedUrl = `https://${normalizedUrl}`;
-    }
+    const normalizedUrl = normalizeUrl(productUrl);
 
     // Scrape the product
     console.log("Scraping product:", normalizedUrl);

@@ -3,6 +3,7 @@ import { outfits, outfitItems, clothingItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ClickableCollage } from "./clickable-collage";
 
 interface ClothingItem {
   id: number;
@@ -23,6 +24,7 @@ interface OutfitWithItems {
   season: string | null;
   imageUrl: string | null;
   inspirationPhotoUrl: string | null;
+  collageMetadata: string | null;
   createdAt: Date;
   items: ClothingItem[];
 }
@@ -105,18 +107,21 @@ export default async function OutfitPage({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Outfit Collage */}
           <div>
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden sticky top-8">
-              {outfitWithItems.imageUrl ? (
-                <img
-                  src={outfitWithItems.imageUrl}
-                  alt={outfitWithItems.name}
-                  className="w-full h-auto"
-                />
-              ) : (
-                <div className="aspect-4/5 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400">No collage available</span>
-                </div>
-              )}
+            <div className="bg-white rounded-lg shadow-sm sticky top-8">
+              <div className="overflow-hidden rounded-lg">
+                {outfitWithItems.imageUrl ? (
+                  <ClickableCollage
+                    imageUrl={outfitWithItems.imageUrl}
+                    collageMetadata={outfitWithItems.collageMetadata}
+                    items={outfitWithItems.items}
+                    altText={outfitWithItems.name}
+                  />
+                ) : (
+                  <div className="aspect-4/5 bg-gray-200 flex items-center justify-center">
+                    <span className="text-gray-400">No collage available</span>
+                  </div>
+                )}
+              </div>
 
               {/* Tags */}
               <div className="p-6">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
+import { normalizeUrl } from "@/lib/url-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
         material: material || null,
         description: description || null,
         price: price || null,
-        productUrl: productUrl || null,
+        productUrl: normalizeUrl(productUrl),
         imageUrl: imageUrl || null,
       })
       .returning();

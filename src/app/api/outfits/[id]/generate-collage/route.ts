@@ -135,7 +135,19 @@ export async function POST(
       command += ` --inspiration "${inspirationPhotoPath}"`;
     }
 
-    await execAsync(command);
+    const { stdout } = await execAsync(command);
+
+    // Parse bounding boxes from stdout
+    let boundingBoxes = null;
+    const jsonMatch = stdout.match(/===BOUNDING_BOXES_JSON===([\s\S]*?)===BOUNDING_BOXES_JSON_END===/);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        boundingBoxes = JSON.parse(jsonMatch[1].trim());
+        console.log(`Captured ${boundingBoxes.length} bounding boxes`);
+      } catch (error) {
+        console.error("Failed to parse bounding boxes JSON:", error);
+      }
+    }
 
     // Upload to Google Cloud Storage
     console.log("Uploading collage to Google Cloud Storage...");
@@ -143,11 +155,12 @@ export async function POST(
     const collageUrl = await uploadToGoogleStorage(tempCollageOutputPath, gcsPath);
     console.log(`Uploaded to: ${collageUrl}`);
 
-    // Update outfit with Google Storage URL
+    // Update outfit with Google Storage URL and collage metadata
     await db
       .update(outfits)
       .set({
         imageUrl: collageUrl,
+        collageMetadata: boundingBoxes ? JSON.stringify(boundingBoxes) : null,
         updatedAt: new Date(),
       })
       .where(eq(outfits.id, outfitId));
@@ -210,11 +223,12 @@ export async function DELETE(
     console.log(`Deleting collage from GCS: ${gcsPath}`);
     await deleteFromGoogleStorage(gcsPath);
 
-    // Update outfit to remove collage URL
+    // Update outfit to remove collage URL and metadata
     await db
       .update(outfits)
       .set({
         imageUrl: null,
+        collageMetadata: null,
         updatedAt: new Date(),
       })
       .where(eq(outfits.id, outfitId));

@@ -48,6 +48,7 @@ export const outfits = pgTable("outfits", {
   season: varchar("season", { length: 50 }), // e.g., 'spring', 'summer', 'fall', 'winter'
   imageUrl: text("image_url"), // generated collage photo
   inspirationPhotoUrl: text("inspiration_photo_url"), // original inspiration/costume photo
+  collageMetadata: text("collage_metadata"), // JSON with bounding boxes for clickable products
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

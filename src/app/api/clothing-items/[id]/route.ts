@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { clothingItems, outfitItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { normalizeUrl } from "@/lib/url-utils";
 
 // GET single clothing item
 export async function GET(
@@ -78,7 +79,7 @@ export async function PUT(
         material: material || null,
         description: description || null,
         price: price || null,
-        productUrl: productUrl || null,
+        productUrl: normalizeUrl(productUrl),
         imageUrl: imageUrl || null,
         updatedAt: new Date(),
       })

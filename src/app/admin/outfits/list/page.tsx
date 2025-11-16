@@ -27,6 +27,12 @@ export default function OutfitsListPage() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [isRegeneratingAll, setIsRegeneratingAll] = useState(false);
+  const [regenerationProgress, setRegenerationProgress] = useState({
+    current: 0,
+    total: 0,
+    currentOutfitName: "",
+  });
 
   // Fetch all outfits
   useEffect(() => {
@@ -71,6 +77,71 @@ export default function OutfitsListPage() {
     }
   };
 
+  const handleRegenerateAllCollages = async () => {
+    if (
+      !confirm(
+        `Are you sure you want to regenerate collages for all ${outfits.length} outfits? This may take a while.`
+      )
+    ) {
+      return;
+    }
+
+    setIsRegeneratingAll(true);
+    setMessage("");
+    setRegenerationProgress({
+      current: 0,
+      total: outfits.length,
+      currentOutfitName: "",
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < outfits.length; i++) {
+      const outfit = outfits[i];
+
+      setRegenerationProgress({
+        current: i + 1,
+        total: outfits.length,
+        currentOutfitName: outfit.name,
+      });
+
+      try {
+        const response = await fetch(
+          `/api/outfits/${outfit.id}/generate-collage`,
+          {
+            method: "POST",
+          }
+        );
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          const error = await response.json();
+          console.error(`Failed to regenerate collage for ${outfit.name}:`, error);
+          failCount++;
+        }
+      } catch (error) {
+        console.error(`Error regenerating collage for ${outfit.name}:`, error);
+        failCount++;
+      }
+    }
+
+    setIsRegeneratingAll(false);
+    setRegenerationProgress({ current: 0, total: 0, currentOutfitName: "" });
+
+    if (failCount === 0) {
+      setMessage(`✅ Successfully regenerated all ${successCount} collages!`);
+    } else {
+      setMessage(
+        `⚠️ Regenerated ${successCount} collages, ${failCount} failed`
+      );
+    }
+
+    // Refresh the list to show new collages
+    fetchOutfits();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -100,12 +171,21 @@ export default function OutfitsListPage() {
             <h1 className="text-3xl font-bold text-gray-900">Outfits</h1>
             <p className="text-gray-600 mt-1">Manage your outfit combinations</p>
           </div>
-          <Link
-            href="/admin/outfits"
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-          >
-            Create New Outfit
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={handleRegenerateAllCollages}
+              disabled={isRegeneratingAll || outfits.length === 0}
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRegeneratingAll ? "Regenerating..." : "Regenerate All Collages"}
+            </button>
+            <Link
+              href="/admin/outfits"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              Create New Outfit
+            </Link>
+          </div>
         </div>
 
         {/* Message */}
@@ -114,10 +194,43 @@ export default function OutfitsListPage() {
             className={`mb-6 p-4 rounded-md ${
               message.includes("❌")
                 ? "bg-red-50 text-red-800 border border-red-200"
+                : message.includes("⚠️")
+                ? "bg-yellow-50 text-yellow-800 border border-yellow-200"
                 : "bg-green-50 text-green-800 border border-green-200"
             }`}
           >
             {message}
+          </div>
+        )}
+
+        {/* Progress Bar */}
+        {isRegeneratingAll && (
+          <div className="mb-6 bg-white rounded-lg shadow-sm p-6">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">
+                Regenerating Collages
+              </span>
+              <span className="text-sm text-gray-600">
+                {regenerationProgress.current} / {regenerationProgress.total}
+              </span>
+            </div>
+            {regenerationProgress.currentOutfitName && (
+              <p className="text-sm text-gray-600 mb-3">
+                Current: {regenerationProgress.currentOutfitName}
+              </p>
+            )}
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-orange-600 h-2.5 rounded-full transition-all duration-300"
+                style={{
+                  width: `${
+                    (regenerationProgress.current /
+                      regenerationProgress.total) *
+                    100
+                  }%`,
+                }}
+              ></div>
+            </div>
           </div>
         )}
 

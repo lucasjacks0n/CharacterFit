@@ -11,6 +11,8 @@ with a Pinterest-style masonry layout and flex-like vertical spacing.
 
 import os
 import math
+import json
+import re
 from PIL import Image
 
 
@@ -168,6 +170,9 @@ def arrange_products_masonry(
     # Create canvas
     canvas = Image.new("RGBA", (canvas_width, canvas_height), bg_color)
 
+    # Collect bounding boxes for each product
+    bounding_boxes = []
+
     # Paste each image
     for (filename, img), (w, h), (col_idx, y) in zip(images, final_sizes, placements):
         if w == 0 or h == 0:
@@ -182,11 +187,23 @@ def arrange_products_masonry(
         canvas.paste(img_resized, (x, int(y)), img_resized)
         print(f"  Placed {filename} at ({x}, {int(y)}) in column {col_idx}")
 
+        # Extract clothing item ID from filename (format: item-{id}.{ext})
+        match = re.match(r'item-(\d+)\.\w+', filename)
+        if match:
+            item_id = int(match.group(1))
+            bounding_boxes.append({
+                'itemId': item_id,
+                'x': x,
+                'y': int(y),
+                'width': w,
+                'height': h
+            })
+
     print("\nImages arranged in masonry layout with mixed space-between/space-around")
-    return canvas
+    return canvas, bounding_boxes
 
 
-def merge_with_inspiration(inspiration_path, collage_img, gap=40):
+def merge_with_inspiration(inspiration_path, collage_img, bounding_boxes, gap=40):
     """
     Merge inspiration photo (left) with clothing collage (right).
 
@@ -196,10 +213,11 @@ def merge_with_inspiration(inspiration_path, collage_img, gap=40):
     Args:
         inspiration_path: Path to the inspiration photo
         collage_img: PIL Image of the clothing collage (800x1000)
+        bounding_boxes: List of bounding box dicts with x, y, width, height
         gap: Gap in pixels between the two images (default 40)
 
     Returns:
-        PIL Image of the merged collage
+        Tuple of (PIL Image of the merged collage, adjusted bounding boxes)
     """
     # Load inspiration photo
     print(f"\nLoading inspiration photo from {inspiration_path}")
@@ -253,7 +271,14 @@ def merge_with_inspiration(inspiration_path, collage_img, gap=40):
     merged.paste(collage_img, (collage_x, 0), collage_img)
     print(f"Pasted collage at ({collage_x}, 0)")
 
-    return merged
+    # Adjust bounding boxes to account for inspiration photo offset
+    adjusted_boxes = []
+    for box in bounding_boxes:
+        adjusted_box = box.copy()
+        adjusted_box['x'] = box['x'] + collage_x
+        adjusted_boxes.append(adjusted_box)
+
+    return merged, adjusted_boxes
 
 
 def main():
@@ -289,7 +314,7 @@ def main():
     print(f"Loaded {len(images)} images\n")
 
     # Arrange into collage (masonry + flexy vertical spacing)
-    collage = arrange_products_masonry(
+    collage, bounding_boxes = arrange_products_masonry(
         images,
         canvas_width=800,
         canvas_height=1000,
@@ -301,16 +326,24 @@ def main():
     # If inspiration photo provided, merge it with the collage
     if inspiration_path and os.path.exists(inspiration_path):
         print(f"\nMerging with inspiration photo...")
-        final_collage = merge_with_inspiration(inspiration_path, collage)
+        final_collage, final_bounding_boxes = merge_with_inspiration(
+            inspiration_path, collage, bounding_boxes
+        )
     else:
         if inspiration_path:
             print(f"\nWarning: Inspiration photo not found at {inspiration_path}, using collage only")
         final_collage = collage
+        final_bounding_boxes = bounding_boxes
 
     # Save final result
     final_collage.save(output_file, "PNG")
     print(f"\nCollage saved to {output_file}")
     print(f"Size: {final_collage.width}x{final_collage.height}")
+
+    # Output bounding boxes as JSON to stdout (for the API to capture)
+    print(f"\n===BOUNDING_BOXES_JSON===")
+    print(json.dumps(final_bounding_boxes))
+    print(f"===BOUNDING_BOXES_JSON_END===")
 
 
 if __name__ == "__main__":
