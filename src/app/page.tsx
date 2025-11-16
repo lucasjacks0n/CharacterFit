@@ -2,9 +2,9 @@ import { db } from "@/db";
 import { outfits, outfitItems, clothingItems } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SiteHeader } from "@/components/site-header";
 
 interface Outfit {
   id: number;
@@ -103,25 +103,7 @@ export default async function Home() {
       />
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">CharacterFits</h1>
-            <p className="text-gray-600 mt-1">Character Costume & Cosplay Builder</p>
-          </div>
-          <div className="flex items-center gap-4">
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-              >
-                Admin Dashboard
-              </Link>
-            )}
-            {userId && <UserButton afterSignOutUrl="/" />}
-          </div>
-        </div>
-      </header>
+      <SiteHeader isAdmin={isAdmin} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
