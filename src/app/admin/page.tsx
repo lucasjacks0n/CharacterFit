@@ -6,6 +6,13 @@ import { UserButton } from "@clerk/nextjs";
 export default function AdminPage() {
   const adminTools = [
     {
+      title: "Manage Outfits",
+      description: "View and edit outfit combinations",
+      href: "/admin/outfits/list",
+      icon: "👔",
+      color: "blue",
+    },
+    {
       title: "Product Importer",
       description: "Import clothing items from Amazon",
       href: "/admin/import",
@@ -18,13 +25,6 @@ export default function AdminPage() {
       href: "/admin/products/list",
       icon: "👕",
       color: "purple",
-    },
-    {
-      title: "Manage Outfits",
-      description: "View and edit outfit combinations",
-      href: "/admin/outfits/list",
-      icon: "👔",
-      color: "blue",
     },
     {
       title: "Create Outfit",
@@ -72,11 +72,7 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {adminTools.map((tool) => (
-            <Link
-              key={tool.href}
-              href={tool.href}
-              className="block group"
-            >
+            <Link key={tool.href} href={tool.href} className="block group">
               <div
                 className={`bg-white rounded-lg shadow-sm p-8 border-2 border-transparent hover:border-${tool.color}-500 hover:shadow-md transition-all duration-200`}
               >

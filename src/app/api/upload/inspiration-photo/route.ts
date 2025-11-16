@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 import { uploadToGoogleStorage } from "@/lib/google-storage";
 
 export async function POST(request: NextRequest) {
@@ -38,8 +39,8 @@ export async function POST(request: NextRequest) {
 
     // Create temp file path
     const fileExtension = file.name.split(".").pop() || "jpg";
-    const timestamp = Date.now();
-    const tempFileName = `inspiration-${timestamp}.${fileExtension}`;
+    const uuid = randomUUID();
+    const tempFileName = `inspiration-${uuid}.${fileExtension}`;
     const tempFilePath = path.join("/tmp", tempFileName);
 
     // Write file to temp location

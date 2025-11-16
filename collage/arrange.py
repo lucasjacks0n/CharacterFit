@@ -186,17 +186,92 @@ def arrange_products_masonry(
     return canvas
 
 
+def merge_with_inspiration(inspiration_path, collage_img, gap=40):
+    """
+    Merge inspiration photo (left) with clothing collage (right).
+
+    Inspiration photo is zoomed/cropped to fill 800x1000 (matching collage size).
+    Uses center crop to maintain focus.
+
+    Args:
+        inspiration_path: Path to the inspiration photo
+        collage_img: PIL Image of the clothing collage (800x1000)
+        gap: Gap in pixels between the two images (default 40)
+
+    Returns:
+        PIL Image of the merged collage
+    """
+    # Load inspiration photo
+    print(f"\nLoading inspiration photo from {inspiration_path}")
+    inspiration = Image.open(inspiration_path)
+    if inspiration.mode != "RGBA":
+        inspiration = inspiration.convert("RGBA")
+
+    # Target dimensions (match collage size)
+    target_width = 800
+    target_height = 1000
+
+    # Calculate scale to fill the target area (cover behavior)
+    # Scale so the smaller dimension fits, then crop the overflow
+    scale_width = target_width / inspiration.width
+    scale_height = target_height / inspiration.height
+    scale = max(scale_width, scale_height)  # Use max to fill/cover
+
+    # Resize with the fill scale
+    new_width = int(inspiration.width * scale)
+    new_height = int(inspiration.height * scale)
+    inspiration_scaled = inspiration.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    print(f"Inspiration photo scaled to {new_width}x{new_height}")
+
+    # Center crop to target size
+    left = (new_width - target_width) // 2
+    top = (new_height - target_height) // 2
+    right = left + target_width
+    bottom = top + target_height
+    inspiration_cropped = inspiration_scaled.crop((left, top, right, bottom))
+    print(f"Inspiration photo cropped to {target_width}x{target_height} (center crop)")
+
+    # Collage is already 800x1000
+    collage_width = collage_img.width
+    collage_height = collage_img.height
+
+    # Calculate merged canvas dimensions (both same height now)
+    total_width = target_width + gap + collage_width
+    canvas_height = target_height  # Both images are same height
+
+    print(f"Creating merged canvas: {total_width}x{canvas_height}")
+
+    # Create white canvas
+    merged = Image.new("RGBA", (total_width, canvas_height), (255, 255, 255, 255))
+
+    # Paste inspiration photo on left (no vertical offset needed, same height)
+    merged.paste(inspiration_cropped, (0, 0), inspiration_cropped)
+    print(f"Pasted inspiration at (0, 0)")
+
+    # Paste collage on right (after gap)
+    collage_x = target_width + gap
+    merged.paste(collage_img, (collage_x, 0), collage_img)
+    print(f"Pasted collage at ({collage_x}, 0)")
+
+    return merged
+
+
 def main():
     """Process all extracted images and create collage."""
     import sys
+    import argparse
 
-    # Accept input dir and output file from command line or environment
-    input_dir = sys.argv[1] if len(sys.argv) > 1 else os.getenv("INPUT_DIR", "out")
-    output_file = (
-        sys.argv[2]
-        if len(sys.argv) > 2
-        else os.getenv("OUTPUT_FILE", "collages/collage.png")
-    )
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Arrange product images into a collage")
+    parser.add_argument("input_dir", help="Directory containing product images")
+    parser.add_argument("output_file", help="Output path for the collage")
+    parser.add_argument("--inspiration", help="Path to inspiration photo to merge (optional)")
+
+    args = parser.parse_args()
+
+    input_dir = args.input_dir
+    output_file = args.output_file
+    inspiration_path = args.inspiration
 
     # Create output directory if it doesn't exist
     output_dir = os.path.dirname(output_file)
@@ -220,10 +295,22 @@ def main():
         canvas_height=1000,
     )
 
-    if collage:
-        collage.save(output_file, "PNG")
-        print(f"\nCollage saved to {output_file}")
-        print(f"Size: {collage.width}x{collage.height}")
+    if not collage:
+        return
+
+    # If inspiration photo provided, merge it with the collage
+    if inspiration_path and os.path.exists(inspiration_path):
+        print(f"\nMerging with inspiration photo...")
+        final_collage = merge_with_inspiration(inspiration_path, collage)
+    else:
+        if inspiration_path:
+            print(f"\nWarning: Inspiration photo not found at {inspiration_path}, using collage only")
+        final_collage = collage
+
+    # Save final result
+    final_collage.save(output_file, "PNG")
+    print(f"\nCollage saved to {output_file}")
+    print(f"Size: {final_collage.width}x{final_collage.height}")
 
 
 if __name__ == "__main__":

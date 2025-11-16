@@ -38,6 +38,7 @@ export default function EditOutfitPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingCollage, setIsGeneratingCollage] = useState(false);
+  const [isDeletingCollage, setIsDeletingCollage] = useState(false);
   const [message, setMessage] = useState("");
   const [collageUrl, setCollageUrl] = useState<string | null>(null);
 
@@ -163,21 +164,44 @@ export default function EditOutfitPage() {
     setMessage("Uploading inspiration photo...");
 
     try {
+      // Upload to Google Cloud Storage
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/api/upload/inspiration-photo", {
+      const uploadResponse = await fetch("/api/upload/inspiration-photo", {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) {
+      if (!uploadResponse.ok) {
         throw new Error("Failed to upload photo");
       }
 
-      const result = await response.json();
-      setInspirationPhotoUrl(result.url);
-      setMessage("✅ Inspiration photo uploaded!");
+      const uploadResult = await uploadResponse.json();
+      const photoUrl = uploadResult.url;
+
+      // Immediately save to database
+      const saveResponse = await fetch(`/api/outfits/${outfitId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: outfitName,
+          description: outfitDescription || null,
+          occasion: occasion || null,
+          season: season || null,
+          itemIds: selectedItems.map((item) => item.id),
+          inspirationPhotoUrl: photoUrl,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error("Failed to save inspiration photo");
+      }
+
+      setInspirationPhotoUrl(photoUrl);
+      setMessage("✅ Inspiration photo uploaded and saved!");
     } catch (error) {
       setMessage("❌ Failed to upload photo: " + (error as Error).message);
       setInspirationPhoto(null);
@@ -256,6 +280,37 @@ export default function EditOutfitPage() {
       setMessage("❌ Error: " + (error as Error).message);
     } finally {
       setIsGeneratingCollage(false);
+    }
+  };
+
+  // Delete collage
+  const handleDeleteCollage = async () => {
+    if (!confirm("Are you sure you want to delete this collage?")) {
+      return;
+    }
+
+    setIsDeletingCollage(true);
+    setMessage("Deleting collage...");
+
+    try {
+      const response = await fetch(
+        `/api/outfits/${outfitId}/generate-collage`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || "Failed to delete collage");
+      }
+
+      setCollageUrl(null);
+      setMessage("✅ Collage deleted successfully!");
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+    } finally {
+      setIsDeletingCollage(false);
     }
   };
 
@@ -503,8 +558,22 @@ export default function EditOutfitPage() {
             </div>
           </div>
 
-          {/* Right Column - Selected Items & Save Button */}
+          {/* Right Column - Collage Preview & Selected Items */}
           <div className="space-y-6">
+            {/* Collage Preview */}
+            {collageUrl && (
+              <div className="bg-white shadow-sm rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Outfit Collage
+                </h3>
+                <img
+                  src={collageUrl}
+                  alt="Outfit collage"
+                  className="w-full h-auto rounded-lg border border-gray-200"
+                />
+              </div>
+            )}
+
             {/* Selected Items */}
             <div className="bg-white shadow-sm rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -566,30 +635,28 @@ export default function EditOutfitPage() {
               {isSaving ? "Saving Changes..." : "Save Changes"}
             </button>
 
-            {/* Generate Collage Button - Only in development */}
+            {/* Collage Management - Only in development */}
             {process.env.NODE_ENV !== 'production' && (
-              <button
-                onClick={handleGenerateCollage}
-                disabled={isGeneratingCollage || selectedItems.length === 0}
-                className="w-full px-6 py-3 bg-orange-600 text-white font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isGeneratingCollage
-                  ? "Generating Collage..."
-                  : "Generate Collage"}
-              </button>
-            )}
+              <div className="space-y-2">
+                <button
+                  onClick={handleGenerateCollage}
+                  disabled={isGeneratingCollage || isDeletingCollage || selectedItems.length === 0}
+                  className="w-full px-6 py-3 bg-orange-600 text-white font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGeneratingCollage
+                    ? "Generating Collage..."
+                    : "Generate Collage"}
+                </button>
 
-            {/* Collage Preview */}
-            {collageUrl && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Outfit Collage
-                </h3>
-                <img
-                  src={collageUrl}
-                  alt="Outfit collage"
-                  className="w-full h-auto rounded-lg border border-gray-200"
-                />
+                {collageUrl && (
+                  <button
+                    onClick={handleDeleteCollage}
+                    disabled={isGeneratingCollage || isDeletingCollage}
+                    className="w-full px-6 py-3 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isDeletingCollage ? "Deleting..." : "Delete Collage"}
+                  </button>
+                )}
               </div>
             )}
 

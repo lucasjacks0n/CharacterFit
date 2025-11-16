@@ -105,18 +105,9 @@ export default async function Home() {
               >
                 {/* Outfit Photo or Items Preview */}
                 <div className="bg-gray-100 p-4">
-                  {outfit.inspirationPhotoUrl ? (
-                    /* Show inspiration photo if available */
-                    <div className="aspect-[4/5]">
-                      <img
-                        src={outfit.inspirationPhotoUrl}
-                        alt={outfit.name}
-                        className="w-full h-full object-cover rounded"
-                      />
-                    </div>
-                  ) : outfit.imageUrl ? (
-                    /* Show collage if available */
-                    <div className="aspect-[4/5]">
+                  {outfit.imageUrl ? (
+                    /* Show collage (merged with inspiration) if available */
+                    <div className="w-full">
                       <img
                         src={outfit.imageUrl}
                         alt={outfit.name}
