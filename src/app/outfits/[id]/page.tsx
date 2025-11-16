@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClickableCollage } from "./clickable-collage";
+import type { Metadata } from "next";
 
 interface ClothingItem {
   id: number;
@@ -27,6 +28,79 @@ interface OutfitWithItems {
   collageMetadata: string | null;
   createdAt: Date;
   items: ClothingItem[];
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const outfitId = parseInt(id);
+
+  // Fetch outfit details
+  const [outfit] = await db
+    .select()
+    .from(outfits)
+    .where(eq(outfits.id, outfitId))
+    .limit(1);
+
+  if (!outfit) {
+    return {
+      title: "Outfit Not Found - CharacterFits",
+    };
+  }
+
+  // Fetch outfit items for item count
+  const items = await db
+    .select({
+      id: clothingItems.id,
+      title: clothingItems.title,
+    })
+    .from(outfitItems)
+    .innerJoin(clothingItems, eq(outfitItems.clothingItemId, clothingItems.id))
+    .where(eq(outfitItems.outfitId, outfitId));
+
+  const description =
+    outfit.description ||
+    `${outfit.name} - A ${items.length}-piece outfit ${
+      outfit.occasion ? `for ${outfit.occasion}` : ""
+    } ${outfit.season ? `perfect for ${outfit.season}` : ""}`.trim();
+
+  return {
+    title: `${outfit.name} - CharacterFits`,
+    description,
+    keywords: [
+      outfit.name,
+      "outfit",
+      "character outfit",
+      outfit.occasion || "",
+      outfit.season || "",
+      "costume",
+      "clothing",
+    ].filter(Boolean),
+    openGraph: {
+      title: `${outfit.name} - CharacterFits`,
+      description,
+      type: "website",
+      images: outfit.imageUrl
+        ? [
+            {
+              url: outfit.imageUrl,
+              width: 1640,
+              height: 1000,
+              alt: outfit.name,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${outfit.name} - CharacterFits`,
+      description,
+      images: outfit.imageUrl ? [outfit.imageUrl] : undefined,
+    },
+  };
 }
 
 export default async function OutfitPage({
@@ -69,8 +143,42 @@ export default async function OutfitPage({
     items,
   };
 
+  // Structured data for SEO
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: outfitWithItems.name,
+    description: outfitWithItems.description,
+    numberOfItems: outfitWithItems.items.length,
+    itemListElement: outfitWithItems.items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Product",
+        name: item.title,
+        image: item.imageUrl,
+        ...(item.productUrl && { url: item.productUrl }),
+        ...(item.brand && { brand: { "@type": "Brand", name: item.brand } }),
+        ...(item.color && { color: item.color }),
+        ...(item.price && {
+          offers: {
+            "@type": "Offer",
+            price: item.price,
+            priceCurrency: "USD",
+          },
+        }),
+      },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

@@ -4,6 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 interface Outfit {
   id: number;
@@ -19,6 +20,33 @@ interface Outfit {
     imageUrl: string | null;
   }[];
 }
+
+export const metadata: Metadata = {
+  title: "CharacterFits - Your Personal Outfit Manager",
+  description:
+    "Discover and create character-inspired outfit combinations. Browse curated outfits for any occasion with clickable product links.",
+  keywords: [
+    "outfit manager",
+    "character outfits",
+    "costume ideas",
+    "outfit inspiration",
+    "fashion",
+    "clothing combinations",
+  ],
+  openGraph: {
+    title: "CharacterFits - Your Personal Outfit Manager",
+    description:
+      "Discover and create character-inspired outfit combinations. Browse curated outfits for any occasion.",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CharacterFits - Your Personal Outfit Manager",
+    description:
+      "Discover and create character-inspired outfit combinations. Browse curated outfits for any occasion.",
+  },
+};
 
 export default async function Home() {
   console.log("load home page");
@@ -55,8 +83,23 @@ export default async function Home() {
     })
   );
 
+  // Structured data for SEO
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "CharacterFits",
+    description: "Your Personal Outfit Manager",
+    url: "https://characterfits.com",
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">

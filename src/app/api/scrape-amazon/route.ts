@@ -27,6 +27,13 @@ export async function POST(request: NextRequest) {
     // Normalize URL - add https:// if missing protocol
     const normalizedUrl = normalizeUrl(productUrl);
 
+    if (!normalizedUrl) {
+      return NextResponse.json(
+        { error: "Invalid product URL" },
+        { status: 400 }
+      );
+    }
+
     // Scrape the product
     console.log("Scraping product:", normalizedUrl);
     const scrapedData = await scrapeAmazonProduct(normalizedUrl);
