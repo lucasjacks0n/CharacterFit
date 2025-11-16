@@ -3,6 +3,7 @@ import { outfits, outfitItems, clothingItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
 import { OutfitContent } from "./outfit-content";
 
 interface ClothingItem {
@@ -110,6 +111,10 @@ export default async function OutfitPage({
   const { id } = await params;
   const outfitId = parseInt(id);
 
+  // Check if user is admin
+  const { sessionClaims } = await auth();
+  const isAdmin = sessionClaims?.metadata?.role === "admin";
+
   // Fetch outfit details
   const [outfit] = await db
     .select()
@@ -177,7 +182,7 @@ export default async function OutfitPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <OutfitContent outfit={outfitWithItems} />
+      <OutfitContent outfit={outfitWithItems} isAdmin={isAdmin} />
     </>
   );
 }
