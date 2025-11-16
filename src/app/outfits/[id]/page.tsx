@@ -157,21 +157,6 @@ export default async function OutfitPage({
                     className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                   >
                     <div className="flex">
-                      {/* Item Image */}
-                      <div className="w-32 h-32 shrink-0 bg-gray-100">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                            No image
-                          </div>
-                        )}
-                      </div>
-
                       {/* Item Details */}
                       <div className="flex-1 p-4">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
