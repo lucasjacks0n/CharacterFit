@@ -22,29 +22,31 @@ interface Outfit {
 }
 
 export const metadata: Metadata = {
-  title: "CharacterFits - Your Personal Outfit Manager",
+  title: "CharacterFits - Character Costume & Cosplay Outfit Builder",
   description:
-    "Discover and create character-inspired outfit combinations. Browse curated outfits for any occasion with clickable product links.",
+    "Create and discover character-inspired costumes and cosplay outfits. Browse curated character costumes with clickable product links to shop the look.",
   keywords: [
-    "outfit manager",
+    "character costumes",
+    "cosplay outfits",
+    "costume builder",
     "character outfits",
     "costume ideas",
-    "outfit inspiration",
-    "fashion",
-    "clothing combinations",
+    "cosplay inspiration",
+    "halloween costumes",
+    "character fashion",
   ],
   openGraph: {
-    title: "CharacterFits - Your Personal Outfit Manager",
+    title: "CharacterFits - Character Costume & Cosplay Outfit Builder",
     description:
-      "Discover and create character-inspired outfit combinations. Browse curated outfits for any occasion.",
+      "Create and discover character-inspired costumes and cosplay outfits. Shop curated character costumes with clickable product links.",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CharacterFits - Your Personal Outfit Manager",
+    title: "CharacterFits - Character Costume & Cosplay Outfit Builder",
     description:
-      "Discover and create character-inspired outfit combinations. Browse curated outfits for any occasion.",
+      "Create and discover character-inspired costumes and cosplay outfits. Shop curated character costumes with clickable product links.",
   },
 };
 
@@ -88,7 +90,7 @@ export default async function Home() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "CharacterFits",
-    description: "Your Personal Outfit Manager",
+    description: "Character Costume & Cosplay Builder",
     url: "https://characterfits.com",
   };
 
@@ -105,7 +107,7 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">CharacterFits</h1>
-            <p className="text-gray-600 mt-1">Your Personal Outfit Manager</p>
+            <p className="text-gray-600 mt-1">Character Costume & Cosplay Builder</p>
           </div>
           <div className="flex items-center gap-4">
             {isAdmin && (

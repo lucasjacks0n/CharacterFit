@@ -21,6 +21,8 @@ interface ClickableCollageProps {
   collageMetadata: string | null;
   items: ClothingItem[];
   altText: string;
+  hoveredItemId?: number | null;
+  onItemHover?: (itemId: number | null) => void;
 }
 
 export function ClickableCollage({
@@ -28,12 +30,17 @@ export function ClickableCollage({
   collageMetadata,
   items,
   altText,
+  hoveredItemId: externalHoveredItemId,
+  onItemHover,
 }: ClickableCollageProps) {
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-  const [hoveredItemId, setHoveredItemId] = useState<number | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [internalHoveredItemId, setInternalHoveredItemId] = useState<number | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Use external hover state if provided, otherwise use internal state
+  const hoveredItemId = externalHoveredItemId !== undefined ? externalHoveredItemId : internalHoveredItemId;
+  const setHoveredItemId = onItemHover || setInternalHoveredItemId;
 
   // Parse bounding boxes from metadata
   const boundingBoxes: BoundingBox[] = collageMetadata
@@ -91,21 +98,6 @@ export function ClickableCollage({
     );
   }
 
-  const handleMouseEnter = (box: BoundingBox) => {
-    if (!containerRef.current) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const scaleX = imageDimensions.width / originalWidth;
-    const scaleY = imageDimensions.height / originalHeight;
-
-    // Calculate center of the box
-    const boxCenterX = rect.left + (box.x + box.width / 2) * scaleX;
-    const boxTopY = rect.top + box.y * scaleY;
-
-    setTooltipPosition({ x: boxCenterX, y: boxTopY });
-    setHoveredItemId(box.itemId);
-  };
-
   return (
     <>
       <div ref={containerRef} className="relative overflow-visible">
@@ -157,7 +149,7 @@ export function ClickableCollage({
                   width: `${widthPercent}%`,
                   height: `${heightPercent}%`,
                 }}
-                onMouseEnter={() => handleMouseEnter(box)}
+                onMouseEnter={() => setHoveredItemId(box.itemId)}
                 onMouseLeave={() => setHoveredItemId(null)}
               >
                 {/* Invisible clickable area */}
@@ -173,33 +165,6 @@ export function ClickableCollage({
             );
           })}
       </div>
-
-      {/* Tooltip - rendered as fixed position to avoid clipping */}
-      {hoveredItemId !== null && (() => {
-        const box = boundingBoxes.find(b => b.itemId === hoveredItemId);
-        if (!box) return null;
-
-        const itemTitle = itemTitleMap.get(box.itemId);
-        if (!itemTitle) return null;
-
-        return (
-          <div
-            className="fixed pointer-events-none z-[9999]"
-            style={{
-              left: `${tooltipPosition.x}px`,
-              top: `${tooltipPosition.y}px`,
-              transform: "translate(-50%, calc(-100% - 8px))",
-            }}
-          >
-            <div className="px-3 py-2 bg-gray-900 text-white text-sm rounded shadow-lg whitespace-nowrap">
-              {itemTitle}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                <div className="border-4 border-transparent border-t-gray-900" />
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </>
   );
 }
