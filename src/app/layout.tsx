@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CharacterFits",
-  description: "Your personal outfit manager",
+  description: "Be the character you were",
 };
 
 export default function RootLayout({
