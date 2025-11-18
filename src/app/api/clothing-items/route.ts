@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
 import { normalizeUrl } from "@/lib/url-utils";
+import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize the product URL
+    const normalizedProductUrl = normalizeUrl(productUrl);
+
+    // Check for duplicate product URL
+    if (normalizedProductUrl) {
+      const existingItem = await db
+        .select()
+        .from(clothingItems)
+        .where(eq(clothingItems.productUrl, normalizedProductUrl))
+        .limit(1);
+
+      if (existingItem.length > 0) {
+        return NextResponse.json(
+          {
+            error: "A product with this URL already exists",
+            existingItem: existingItem[0],
+          },
+          { status: 409 } // 409 Conflict
+        );
+      }
+    }
+
     // Insert into database
     const [newItem] = await db
       .insert(clothingItems)
@@ -40,7 +63,7 @@ export async function POST(request: NextRequest) {
         material: material || null,
         description: description || null,
         price: price || null,
-        productUrl: normalizeUrl(productUrl),
+        productUrl: normalizedProductUrl,
         imageUrl: imageUrl || null,
       })
       .returning();

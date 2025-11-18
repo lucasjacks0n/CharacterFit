@@ -42,6 +42,17 @@ export default function ProductImporterPage() {
 
       if (!response.ok) {
         const error = await response.json();
+
+        // Handle duplicate product URL (409 Conflict)
+        if (response.status === 409) {
+          setMessage("⚠️ This product already exists in the database");
+          if (error.existingItem) {
+            setScrapedItem(error.existingItem);
+          }
+          setAmazonUrl("");
+          return;
+        }
+
         throw new Error(error.details || "Failed to scrape and save product");
       }
 
@@ -128,6 +139,8 @@ export default function ProductImporterPage() {
               className={`p-4 rounded-md ${
                 message.includes("❌")
                   ? "bg-red-50 text-red-800 border border-red-200"
+                  : message.includes("⚠️")
+                  ? "bg-yellow-50 text-yellow-800 border border-yellow-200"
                   : message.includes("✅")
                   ? "bg-green-50 text-green-800 border border-green-200"
                   : "bg-blue-50 text-blue-800 border border-blue-200"

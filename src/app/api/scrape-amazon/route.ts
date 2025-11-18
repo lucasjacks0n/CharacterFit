@@ -3,6 +3,10 @@ import { scrapeAmazonProduct } from "@/lib/scrapers/amazon-scraper";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
 import { normalizeUrl } from "@/lib/url-utils";
+import { normalizeAmazonUrl } from "@/lib/amazon-url-utils";
+import { downloadAndUploadImage } from "@/lib/google-storage";
+import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,12 +29,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize URL - add https:// if missing protocol
-    const normalizedUrl = normalizeUrl(productUrl);
+    let normalizedUrl = normalizeUrl(productUrl);
 
     if (!normalizedUrl) {
       return NextResponse.json(
         { error: "Invalid product URL" },
         { status: 400 }
+      );
+    }
+
+    // Further normalize Amazon URLs to prevent duplicates (strip parameters, etc.)
+    normalizedUrl = normalizeAmazonUrl(normalizedUrl);
+
+    // Check for duplicates BEFORE scraping (save time and resources)
+    const existingItem = await db
+      .select()
+      .from(clothingItems)
+      .where(eq(clothingItems.productUrl, normalizedUrl))
+      .limit(1);
+
+    if (existingItem.length > 0) {
+      return NextResponse.json(
+        {
+          error: "A product with this URL already exists",
+          existingItem: existingItem[0],
+        },
+        { status: 409 } // 409 Conflict
       );
     }
 
@@ -43,6 +67,32 @@ export async function POST(request: NextRequest) {
     const shouldAutoSave = body.autoSave === true;
 
     if (shouldAutoSave) {
+      // Download and store the product image in GCS if available
+      let storedImageUrl = scrapedData.imageUrl || null;
+
+      if (scrapedData.imageUrl) {
+        try {
+          console.log("Downloading and storing product image...");
+          // Generate a random UUID for the image filename
+          const imageUuid = randomUUID();
+          // Determine file extension from URL
+          const extension = scrapedData.imageUrl.toLowerCase().includes(".png")
+            ? "png"
+            : "jpg";
+          const destinationPath = `product-images/${imageUuid}.${extension}`;
+
+          storedImageUrl = await downloadAndUploadImage(
+            scrapedData.imageUrl,
+            destinationPath
+          );
+          console.log("Product image stored at:", storedImageUrl);
+        } catch (error) {
+          console.error("Failed to download/store product image:", error);
+          // Fall back to original URL if storage fails
+          storedImageUrl = scrapedData.imageUrl;
+        }
+      }
+
       const [newItem] = await db
         .insert(clothingItems)
         .values({
@@ -55,7 +105,7 @@ export async function POST(request: NextRequest) {
           description: scrapedData.description || null,
           price: scrapedData.price?.toString() || null,
           productUrl: normalizedUrl,
-          imageUrl: scrapedData.imageUrl || null,
+          imageUrl: storedImageUrl,
         })
         .returning();
 

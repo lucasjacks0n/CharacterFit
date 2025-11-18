@@ -6,6 +6,13 @@ import { UserButton } from "@clerk/nextjs";
 export default function AdminPage() {
   const adminTools = [
     {
+      title: "Create Outfit",
+      description: "Create new outfit combinations",
+      href: "/admin/outfits",
+      icon: "✨",
+      color: "green",
+    },
+    {
       title: "Manage Outfits",
       description: "View and edit outfit combinations",
       href: "/admin/outfits/list",
@@ -25,13 +32,6 @@ export default function AdminPage() {
       href: "/admin/products/list",
       icon: "👕",
       color: "purple",
-    },
-    {
-      title: "Create Outfit",
-      description: "Create new outfit combinations",
-      href: "/admin/outfits",
-      icon: "✨",
-      color: "green",
     },
   ];
 

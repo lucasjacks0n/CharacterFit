@@ -60,6 +60,9 @@ export class AmazonScraper {
       // Give extra time for dynamic content to load
       await this.driver.sleep(3000);
 
+      // Check if product is unavailable
+      await this.checkProductAvailability();
+
       // Extract title
       const title = await this.safeGetText(By.id("productTitle"));
 
@@ -94,6 +97,64 @@ export class AmazonScraper {
     } catch (error) {
       console.error("Error scraping Amazon product:", error);
       throw error;
+    }
+  }
+
+  private async checkProductAvailability(): Promise<void> {
+    if (!this.driver) return;
+
+    try {
+      // Get the entire page text to check for availability messages
+      const bodyElement = await this.driver.findElement(By.css("body"));
+      const pageText = await bodyElement.getText();
+      const lowerPageText = pageText.toLowerCase();
+
+      // Common unavailability indicators on Amazon
+      const unavailableIndicators = [
+        "currently unavailable",
+        "we don't know when or if this item will be back in stock",
+        "this item is not available",
+        "out of stock",
+        "item under review",
+        "dogs of amazon",
+        "page not found",
+        "sorry! we couldn't find that page",
+      ];
+
+      // Check for any unavailability indicators
+      for (const indicator of unavailableIndicators) {
+        if (lowerPageText.includes(indicator)) {
+          throw new Error(`Product is unavailable: ${indicator}`);
+        }
+      }
+
+      // Check specific availability element
+      try {
+        const availabilityElement = await this.driver.findElement(
+          By.css("#availability")
+        );
+        const availabilityText = await availabilityElement.getText();
+        const lowerAvailability = availabilityText.toLowerCase();
+
+        if (
+          lowerAvailability.includes("unavailable") ||
+          lowerAvailability.includes("out of stock") ||
+          lowerAvailability.includes("not available")
+        ) {
+          throw new Error("Product is currently unavailable");
+        }
+      } catch (error) {
+        // If we can't find availability element, that's okay - continue
+        if (error instanceof Error && error.message.includes("unavailable")) {
+          throw error; // Re-throw if it's our unavailability error
+        }
+      }
+    } catch (error) {
+      // If it's our unavailability error, re-throw it
+      if (error instanceof Error && error.message.includes("unavailable")) {
+        throw error;
+      }
+      // Otherwise, continue (page text extraction failed but product might still be available)
     }
   }
 
@@ -661,6 +722,47 @@ export async function scrapeAmazonProduct(
   try {
     await scraper.initialize();
     return await scraper.scrapeProduct(productUrl);
+  } finally {
+    await scraper.close();
+  }
+}
+
+// Result type for batch scraping
+export interface BatchScrapeResult {
+  url: string;
+  success: boolean;
+  data?: AmazonProductData;
+  error?: string;
+}
+
+// Helper function to scrape multiple products with a single driver instance
+export async function scrapeAmazonProductsBatch(
+  productUrls: string[]
+): Promise<BatchScrapeResult[]> {
+  const scraper = new AmazonScraper();
+  const results: BatchScrapeResult[] = [];
+
+  try {
+    await scraper.initialize();
+
+    for (const url of productUrls) {
+      try {
+        const data = await scraper.scrapeProduct(url);
+        results.push({
+          url,
+          success: true,
+          data,
+        });
+      } catch (error) {
+        results.push({
+          url,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return results;
   } finally {
     await scraper.close();
   }

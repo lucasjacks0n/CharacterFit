@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { outfits, outfitItems, clothingItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export async function GET() {
   try {
-    // Get all outfits
-    const allOutfits = await db.select().from(outfits).orderBy(outfits.createdAt);
+    // Get all outfits (newest first)
+    const allOutfits = await db
+      .select()
+      .from(outfits)
+      .orderBy(desc(outfits.createdAt));
 
     // For each outfit, get its items
     const outfitsWithItems = await Promise.all(
@@ -24,7 +27,8 @@ export async function GET() {
             clothingItems,
             eq(outfitItems.clothingItemId, clothingItems.id)
           )
-          .where(eq(outfitItems.outfitId, outfit.id));
+          .where(eq(outfitItems.outfitId, outfit.id))
+          .orderBy(desc(clothingItems.id));
 
         return {
           ...outfit,

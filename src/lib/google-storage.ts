@@ -1,4 +1,10 @@
 import { Storage } from "@google-cloud/storage";
+import { createWriteStream } from "fs";
+import { unlink } from "fs/promises";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import path from "path";
+import os from "os";
 
 // Initialize Google Cloud Storage client
 const getStorageClient = () => {
@@ -61,4 +67,44 @@ export async function deleteFromGoogleStorage(
   const bucket = storage.bucket(bucketName);
 
   await bucket.file(filePath).delete();
+}
+
+/**
+ * Download an image from a URL and upload it to Google Cloud Storage
+ * @param imageUrl - URL of the image to download
+ * @param destinationPath - Path in GCS bucket (e.g., "product-images/item-123.jpg")
+ * @returns Public URL of the uploaded file
+ */
+export async function downloadAndUploadImage(
+  imageUrl: string,
+  destinationPath: string
+): Promise<string> {
+  // Create a temporary file path
+  const tempFilePath = path.join(os.tmpdir(), `temp-${Date.now()}.jpg`);
+
+  try {
+    // Download the image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+
+    // Save to temporary file
+    const fileStream = createWriteStream(tempFilePath);
+    // Convert the Response body to a Node.js readable stream
+    const nodeStream = Readable.fromWeb(response.body as any);
+    await pipeline(nodeStream, fileStream);
+
+    // Upload to GCS
+    const publicUrl = await uploadToGoogleStorage(tempFilePath, destinationPath);
+
+    return publicUrl;
+  } finally {
+    // Clean up temporary file
+    try {
+      await unlink(tempFilePath);
+    } catch (error) {
+      console.error("Failed to delete temporary file:", error);
+    }
+  }
 }

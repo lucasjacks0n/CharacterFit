@@ -11,6 +11,7 @@ interface ClothingItem {
   color: string | null;
   imageUrl: string | null;
   category: string | null;
+  productUrl: string | null;
 }
 
 interface SelectedItem extends ClothingItem {
@@ -35,6 +36,17 @@ export default function CreateOutfitPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [message, setMessage] = useState("");
 
+  // CostumeWall bulk import
+  const [costumeWallUrl, setCostumeWallUrl] = useState("");
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [bulkImportProgress, setBulkImportProgress] = useState("");
+  const [skippedProducts, setSkippedProducts] = useState<{ url: string; label: string }[]>([]);
+
+  // Set page title
+  useEffect(() => {
+    document.title = "Create Outfit - CharacterFits";
+  }, []);
+
   // Search for existing clothing items
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -43,7 +55,9 @@ export default function CreateOutfitPage() {
     }
 
     try {
-      const response = await fetch(`/api/clothing-items/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(
+        `/api/clothing-items/search?q=${encodeURIComponent(searchQuery)}`
+      );
       if (response.ok) {
         const items = await response.json();
         setSearchResults(items);
@@ -64,9 +78,13 @@ export default function CreateOutfitPage() {
 
   // Add item to outfit
   const addItemToOutfit = (item: ClothingItem) => {
-    if (!selectedItems.find((i) => i.id === item.id)) {
-      setSelectedItems([...selectedItems, item]);
-    }
+    setSelectedItems((prevItems) => {
+      // Check if item already exists
+      if (prevItems.find((i) => i.id === item.id)) {
+        return prevItems;
+      }
+      return [...prevItems, item];
+    });
     setSearchQuery("");
     setSearchResults([]);
   };
@@ -100,6 +118,16 @@ export default function CreateOutfitPage() {
 
       if (!response.ok) {
         const error = await response.json();
+
+        // Handle duplicate product (409 Conflict) - just add the existing product
+        if (response.status === 409 && error.existingItem) {
+          addItemToOutfit(error.existingItem);
+          setMessage(`✅ Added "${error.existingItem.title}" to outfit`);
+          setAmazonUrl("");
+          setIsScraping(false);
+          return;
+        }
+
         throw new Error(error.details || "Failed to scrape product");
       }
 
@@ -116,8 +144,115 @@ export default function CreateOutfitPage() {
     }
   };
 
+  // Bulk import from CostumeWall
+  const handleBulkImportFromCostumeWall = async () => {
+    if (!costumeWallUrl) {
+      setMessage("Please enter a CostumeWall URL");
+      return;
+    }
+
+    setIsBulkImporting(true);
+    setBulkImportProgress("Finding Amazon products...");
+    setMessage("");
+    setSkippedProducts([]);
+
+    try {
+      // Step 1: Scrape CostumeWall page to get all Amazon URLs
+      const cwResponse = await fetch("/api/scrape-costumewall", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          costumeWallUrl: costumeWallUrl,
+        }),
+      });
+
+      if (!cwResponse.ok) {
+        const error = await cwResponse.json();
+        throw new Error(error.details || "Failed to scrape CostumeWall page");
+      }
+
+      const { products } = await cwResponse.json();
+
+      if (products.length === 0) {
+        setMessage("⚠️ No Amazon products found on this CostumeWall page");
+        setIsBulkImporting(false);
+        setBulkImportProgress("");
+        return;
+      }
+
+      setBulkImportProgress(
+        `Found ${products.length} products. Scraping all products...`
+      );
+
+      // Step 2: Batch scrape all Amazon products with single Chrome instance
+      const batchResponse = await fetch("/api/scrape-amazon/batch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productUrls: products.map((p: { url: string; label: string }) => p.url),
+        }),
+      });
+
+      if (!batchResponse.ok) {
+        const error = await batchResponse.json();
+        throw new Error(error.details || "Failed to batch scrape products");
+      }
+
+      const batchResult = await batchResponse.json();
+      const { results } = batchResult;
+
+      // Process results and add items to outfit
+      let successCount = 0;
+      const skippedList: { url: string; label: string }[] = [];
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.success && result.item) {
+          addItemToOutfit(result.item);
+          successCount++;
+        } else {
+          // Product failed to scrape or was unavailable
+          const productInfo = products[i];
+          console.log(`Skipping product ${productInfo.label} (${result.url}): ${result.error || "Unknown error"}`);
+          skippedList.push({
+            url: result.url,
+            label: productInfo.label,
+          });
+        }
+      }
+
+      console.log(
+        `Bulk import complete: ${successCount} added, ${skippedList.length} skipped`
+      );
+      console.log("Skipped URLs:", skippedList);
+
+      setSkippedProducts(skippedList);
+      setCostumeWallUrl("");
+      setBulkImportProgress("");
+
+      if (skippedList.length > 0) {
+        setMessage(
+          `✅ Added ${successCount} products to outfit (${skippedList.length} unavailable products skipped)`
+        );
+      } else {
+        setMessage(`✅ Added all ${successCount} products to outfit`);
+      }
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+      setBulkImportProgress("");
+    } finally {
+      setIsBulkImporting(false);
+    }
+  };
+
   // Handle inspiration photo upload
-  const handleInspirationPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInspirationPhotoChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -189,7 +324,7 @@ export default function CreateOutfitPage() {
       const outfitId = result.outfit.id;
 
       // Only generate collage in development
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         setMessage(`✅ Outfit created! Generating collage...`);
 
         // Automatically generate collage
@@ -200,7 +335,9 @@ export default function CreateOutfitPage() {
           setMessage(`✅ Outfit "${result.outfit.name}" created with collage!`);
         } catch (collageError) {
           console.error("Failed to generate collage:", collageError);
-          setMessage(`✅ Outfit created, but collage generation failed. You can generate it manually from the edit page.`);
+          setMessage(
+            `✅ Outfit created, but collage generation failed. You can generate it manually from the edit page.`
+          );
         }
       } else {
         setMessage(`✅ Outfit "${result.outfit.name}" created successfully!`);
@@ -260,7 +397,10 @@ export default function CreateOutfitPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="outfitName" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="outfitName"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Name *
                   </label>
                   <input
@@ -274,7 +414,10 @@ export default function CreateOutfitPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Description
                   </label>
                   <textarea
@@ -289,7 +432,10 @@ export default function CreateOutfitPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="occasion" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="occasion"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Occasion
                     </label>
                     <input
@@ -303,7 +449,10 @@ export default function CreateOutfitPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="season" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="season"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Season
                     </label>
                     <input
@@ -319,7 +468,10 @@ export default function CreateOutfitPage() {
 
                 {/* Inspiration Photo Upload */}
                 <div>
-                  <label htmlFor="inspirationPhoto" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="inspirationPhoto"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Inspiration Photo
                   </label>
                   <input
@@ -355,7 +507,10 @@ export default function CreateOutfitPage() {
               <div className="space-y-4">
                 {/* Search existing */}
                 <div>
-                  <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="search"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Search Existing Items
                   </label>
                   <input
@@ -399,6 +554,69 @@ export default function CreateOutfitPage() {
                   )}
                 </div>
 
+                {/* Or add from CostumeWall */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">or</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="costumeWallUrl"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Bulk Import from CostumeWall
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="url"
+                      id="costumeWallUrl"
+                      placeholder="https://costumewall.com/dress-like-..."
+                      value={costumeWallUrl}
+                      onChange={(e) => setCostumeWallUrl(e.target.value)}
+                      disabled={isBulkImporting}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 disabled:bg-gray-100"
+                    />
+                    <button
+                      onClick={handleBulkImportFromCostumeWall}
+                      disabled={isBulkImporting}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {isBulkImporting ? "Importing..." : "Import All"}
+                    </button>
+                  </div>
+                  {bulkImportProgress && (
+                    <p className="text-sm text-purple-600 mt-2">
+                      {bulkImportProgress}
+                    </p>
+                  )}
+                  {skippedProducts.length > 0 && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-sm font-medium text-yellow-800 mb-2">
+                        ⚠️ Skipped {skippedProducts.length} unavailable product
+                        {skippedProducts.length > 1 ? "s" : ""}:
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {skippedProducts.map((product, index) => (
+                          <a
+                            key={index}
+                            href={product.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-yellow-700 hover:text-yellow-900 underline block"
+                          >
+                            {product.label}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Or add from Amazon */}
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -410,8 +628,11 @@ export default function CreateOutfitPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="amazonUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                    Add from Amazon URL
+                  <label
+                    htmlFor="amazonUrl"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Add Single Amazon Product
                   </label>
                   <div className="flex space-x-2">
                     <input
@@ -463,9 +684,20 @@ export default function CreateOutfitPage() {
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {item.title}
-                        </p>
+                        {item.productUrl ? (
+                          <a
+                            href={item.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-gray-900 hover:text-orange-600 truncate block"
+                          >
+                            {item.title}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.title}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500">
                           {item.brand} {item.color && `• ${item.color}`}
                           {item.category && ` • ${item.category}`}
@@ -491,7 +723,9 @@ export default function CreateOutfitPage() {
             {/* Create Button */}
             <button
               onClick={handleCreateOutfit}
-              disabled={isCreating || !outfitName.trim() || selectedItems.length === 0}
+              disabled={
+                isCreating || !outfitName.trim() || selectedItems.length === 0
+              }
               className="w-full px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isCreating ? "Creating Outfit..." : "Create Outfit"}

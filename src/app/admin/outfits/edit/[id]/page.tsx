@@ -41,6 +41,11 @@ export default function EditOutfitPage() {
   const [message, setMessage] = useState("");
   const [collageUrl, setCollageUrl] = useState<string | null>(null);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Edit Outfit - CharacterFits";
+  }, []);
+
   // Load outfit data
   useEffect(() => {
     fetchOutfit();
@@ -179,6 +184,16 @@ export default function EditOutfitPage() {
 
       if (!response.ok) {
         const error = await response.json();
+
+        // Handle duplicate product (409 Conflict) - just add the existing product
+        if (response.status === 409 && error.existingItem) {
+          addItemToOutfit(error.existingItem);
+          setMessage(`✅ Added "${error.existingItem.title}" to outfit`);
+          setAmazonUrl("");
+          setIsScraping(false);
+          return;
+        }
+
         throw new Error(error.details || "Failed to scrape product");
       }
 
