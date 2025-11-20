@@ -35,6 +35,13 @@ export class AmazonScraper {
     options.addArguments(
       "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     );
+    // Disable logging to prevent disk space issues
+    options.addArguments("--log-level=3");
+    options.addArguments("--silent");
+    options.addArguments("--disable-logging");
+    // Disable extensions and other features that write to disk
+    options.addArguments("--disable-extensions");
+    options.addArguments("--disable-background-networking");
 
     this.driver = await new Builder()
       .forBrowser("chrome")
@@ -708,8 +715,19 @@ export class AmazonScraper {
 
   async close() {
     if (this.driver) {
-      await this.driver.quit();
-      this.driver = null;
+      try {
+        await this.driver.quit();
+      } catch (error) {
+        console.error("Error quitting driver:", error);
+        // Force kill if quit fails
+        try {
+          await this.driver.close();
+        } catch (closeError) {
+          console.error("Error closing driver:", closeError);
+        }
+      } finally {
+        this.driver = null;
+      }
     }
   }
 }

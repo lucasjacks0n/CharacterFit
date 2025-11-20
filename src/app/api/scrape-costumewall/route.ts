@@ -49,6 +49,12 @@ export async function POST(request: Request) {
     options.addArguments(
       "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     );
+    // Disable logging to prevent disk space issues
+    options.addArguments("--log-level=3");
+    options.addArguments("--silent");
+    options.addArguments("--disable-logging");
+    options.addArguments("--disable-extensions");
+    options.addArguments("--disable-background-networking");
 
     // Initialize WebDriver
     driver = await new Builder()
@@ -66,12 +72,39 @@ export async function POST(request: Request) {
     // Wait a bit for dynamic content
     await driver.sleep(2000);
 
-    // Find all links - including Geniuslink redirects
-    const links = await driver.findElements(By.css("a"));
+    // Extract outfit name from h1
+    let outfitName = "Untitled Outfit";
+    try {
+      const h1Element = await driver.findElement(By.css("h1"));
+      const h1Text = await h1Element.getText();
+      if (h1Text) {
+        // Clean up the title by removing common prefixes
+        outfitName = h1Text
+          .trim()
+          .replace(/^How to Dress Like\s+/i, "")
+          .replace(/^Dress Like\s+/i, "")
+          .replace(/^Get the Look:\s+/i, "")
+          .replace(/\s+Costume$/i, "")
+          .replace(/\s+Outfit$/i, "")
+          .trim();
+      }
+    } catch (error) {
+      console.error("Could not find h1 element, using default name");
+    }
+
+    // Find product links - use specific selectors for CostumeWall's structure
+    // First try hotspotter links, then fall back to all content links
+    let links = await driver.findElements(By.css("a.imagehotspotter_spot, a[data-character]"));
+
+    // If no hotspotter links found, get all links in main content
+    if (links.length === 0) {
+      links = await driver.findElements(By.css("a"));
+    }
 
     interface ProductInfo {
       url: string;
       label: string;
+      isAmazon: boolean;
     }
 
     const products: ProductInfo[] = [];
@@ -84,15 +117,20 @@ export async function POST(request: Request) {
         const href = await link.getAttribute("href");
         if (!href) continue;
 
-        let amazonUrl: string | null = null;
+        // Skip internal CostumeWall links
+        if (href.includes('costumewall.com')) continue;
 
-        // Check if it's a Geniuslink redirect (geni.us or buy.geni.us) - check this FIRST
+        let productUrl: string | null = null;
+        let isAmazon = false;
+
+        // Check if it's a Geniuslink redirect (geni.us or buy.geni.us)
         if (href.includes("geni.us")) {
-          // Extract the Amazon URL from the GR_URL parameter (or similar param)
-          const grUrlMatch = href.match(/[?&](?:GR_URL|amazon)=([^&]+)/i);
+          // Try to extract the destination URL from GR_URL parameter
+          const grUrlMatch = href.match(/[?&](?:GR_URL|amazon|url)=([^&]+)/i);
           if (grUrlMatch) {
             try {
-              amazonUrl = decodeURIComponent(grUrlMatch[1]);
+              productUrl = decodeURIComponent(grUrlMatch[1]);
+              isAmazon = productUrl.includes("amazon.com");
             } catch (e) {
               console.error("Error decoding redirect URL:", e);
             }
@@ -100,30 +138,47 @@ export async function POST(request: Request) {
         }
         // Check if it's a direct Amazon link
         else if (href.includes("amazon.com")) {
-          amazonUrl = href;
+          productUrl = href;
+          isAmazon = true;
+        }
+        // Capture all other external product links
+        else if (href.startsWith("http")) {
+          productUrl = href;
+          isAmazon = false;
         }
 
-        // If we found an Amazon URL (direct or from redirect), extract the ASIN
-        if (amazonUrl && (amazonUrl.includes("amazon.com/dp/") || amazonUrl.includes("amazon.com/gp/product/"))) {
-          const asinMatch = amazonUrl.match(/\/(dp|gp\/product)\/([A-Z0-9]{10})/i);
-          if (asinMatch) {
-            const asin = asinMatch[2];
-            const cleanUrl = `https://www.amazon.com/dp/${asin}`;
+        // Process the product URL
+        if (productUrl) {
+          let cleanUrl = productUrl;
+          let productId = "";
 
-            // Only add if we haven't seen this ASIN yet
-            if (!seenUrls.has(cleanUrl)) {
-              seenUrls.add(cleanUrl);
-
-              // Extract product label - try title attribute first, then link text
-              const titleAttr = await link.getAttribute("title");
-              const linkText = await link.getText();
-              const label = titleAttr?.trim() || linkText.trim() || `Product ${asin}`;
-
-              products.push({
-                url: cleanUrl,
-                label,
-              });
+          // For Amazon URLs, extract ASIN and normalize
+          if (isAmazon && (productUrl.includes("amazon.com/dp/") || productUrl.includes("amazon.com/gp/product/"))) {
+            const asinMatch = productUrl.match(/\/(dp|gp\/product)\/([A-Z0-9]{10})/i);
+            if (asinMatch) {
+              const asin = asinMatch[2];
+              cleanUrl = `https://www.amazon.com/dp/${asin}`;
+              productId = asin;
             }
+          } else {
+            // For non-Amazon URLs, use as-is
+            productId = cleanUrl;
+          }
+
+          // Only add if we haven't seen this URL yet
+          if (!seenUrls.has(cleanUrl)) {
+            seenUrls.add(cleanUrl);
+
+            // Extract product label - try title attribute first, then link text
+            const titleAttr = await link.getAttribute("title");
+            const linkText = await link.getText();
+            const label = titleAttr?.trim() || linkText.trim() || `Product ${productId}`;
+
+            products.push({
+              url: cleanUrl,
+              label,
+              isAmazon,
+            });
           }
         }
       } catch (err) {
@@ -132,26 +187,21 @@ export async function POST(request: Request) {
       }
     }
 
-    await driver.quit();
-    driver = null;
+    const amazonProducts = products.filter(p => p.isAmazon);
+    const nonAmazonProducts = products.filter(p => !p.isAmazon);
 
-    console.log(`Found ${products.length} unique Amazon products with labels`);
+    console.log(`Found ${products.length} total products: ${amazonProducts.length} Amazon, ${nonAmazonProducts.length} non-Amazon`);
 
     return NextResponse.json({
+      outfitName,
       products,
       count: products.length,
+      amazonCount: amazonProducts.length,
+      nonAmazonCount: nonAmazonProducts.length,
     });
 
   } catch (error) {
     console.error("Error scraping CostumeWall:", error);
-
-    if (driver) {
-      try {
-        await driver.quit();
-      } catch (quitError) {
-        console.error("Error quitting driver:", quitError);
-      }
-    }
 
     return NextResponse.json(
       {
@@ -160,5 +210,20 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  } finally {
+    // Always cleanup driver, even if there were errors
+    if (driver) {
+      try {
+        await driver.quit();
+      } catch (quitError) {
+        console.error("Error quitting driver:", quitError);
+        // Force close if quit fails
+        try {
+          await driver.close();
+        } catch (closeError) {
+          console.error("Error closing driver:", closeError);
+        }
+      }
+    }
   }
 }

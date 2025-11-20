@@ -49,6 +49,7 @@ export const outfits = pgTable("outfits", {
   imageUrl: text("image_url"), // generated collage photo
   inspirationPhotoUrl: text("inspiration_photo_url"), // original inspiration/costume photo
   collageMetadata: text("collage_metadata"), // JSON with bounding boxes for clickable products
+  fromBulkUrl: text("from_bulk_url"), // CostumeWall URL used for bulk import (if applicable)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -65,9 +66,24 @@ export const outfitItems = pgTable("outfit_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Missing products table - tracks unavailable products from bulk imports
+export const missingProducts = pgTable("missing_products", {
+  id: serial("id").primaryKey(),
+  outfitId: integer("outfit_id")
+    .references(() => outfits.id, { onDelete: "cascade" })
+    .notNull(),
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  originalAmazonUrl: text("original_amazon_url").notNull(),
+  replacementUrl: text("replacement_url"),
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, resolved
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const outfitsRelations = relations(outfits, ({ many }) => ({
   outfitItems: many(outfitItems),
+  missingProducts: many(missingProducts),
 }));
 
 export const clothingItemsRelations = relations(clothingItems, ({ many }) => ({
@@ -82,5 +98,12 @@ export const outfitItemsRelations = relations(outfitItems, ({ one }) => ({
   clothingItem: one(clothingItems, {
     fields: [outfitItems.clothingItemId],
     references: [clothingItems.id],
+  }),
+}));
+
+export const missingProductsRelations = relations(missingProducts, ({ one }) => ({
+  outfit: one(outfits, {
+    fields: [missingProducts.outfitId],
+    references: [outfits.id],
   }),
 }));

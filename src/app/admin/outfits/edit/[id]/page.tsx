@@ -12,6 +12,7 @@ interface ClothingItem {
   color: string | null;
   imageUrl: string | null;
   category: string | null;
+  productUrl: string | null;
 }
 
 interface SelectedItem extends ClothingItem {}
@@ -28,6 +29,7 @@ export default function EditOutfitPage() {
   const [inspirationPhoto, setInspirationPhoto] = useState<File | null>(null);
   const [inspirationPhotoUrl, setInspirationPhotoUrl] = useState<string>("");
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [fromBulkUrl, setFromBulkUrl] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ClothingItem[]>([]);
@@ -40,6 +42,17 @@ export default function EditOutfitPage() {
   const [isDeletingCollage, setIsDeletingCollage] = useState(false);
   const [message, setMessage] = useState("");
   const [collageUrl, setCollageUrl] = useState<string | null>(null);
+
+  // Missing products state
+  interface MissingProduct {
+    id: number;
+    productName: string;
+    originalAmazonUrl: string;
+    replacementUrl: string | null;
+    status: string;
+  }
+  const [missingProducts, setMissingProducts] = useState<MissingProduct[]>([]);
+  const [replacementUrls, setReplacementUrls] = useState<Record<number, string>>({});
 
   // Set page title
   useEffect(() => {
@@ -64,8 +77,16 @@ export default function EditOutfitPage() {
         setSelectedItems(data.items || []);
         setCollageUrl(data.imageUrl || null);
         setInspirationPhotoUrl(data.inspirationPhotoUrl || "");
+        setFromBulkUrl(data.fromBulkUrl || null);
       } else {
         setMessage("❌ Failed to load outfit");
+      }
+
+      // Fetch missing products
+      const missingResponse = await fetch(`/api/missing-products?outfitId=${outfitId}`);
+      if (missingResponse.ok) {
+        const missingData = await missingResponse.json();
+        setMissingProducts(missingData.products || []);
       }
     } catch (error) {
       console.error("Failed to fetch outfit:", error);
@@ -325,6 +346,74 @@ export default function EditOutfitPage() {
     }
   };
 
+  // Resolve missing product with replacement URL
+  const handleResolveMissingProduct = async (missingProductId: number) => {
+    const replacementUrl = replacementUrls[missingProductId];
+    if (!replacementUrl) {
+      setMessage("Please enter a replacement Amazon URL");
+      return;
+    }
+
+    setMessage("Resolving missing product...");
+
+    try {
+      const response = await fetch(`/api/missing-products/${missingProductId}/resolve`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ replacementUrl }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || "Failed to resolve missing product");
+      }
+
+      const result = await response.json();
+
+      // Add the resolved item to the outfit
+      addItemToOutfit(result.item);
+
+      // Refresh missing products list
+      await fetchOutfit();
+
+      setMessage(`✅ Product resolved and added to outfit!`);
+
+      // Clear the replacement URL input
+      setReplacementUrls((prev) => {
+        const updated = { ...prev };
+        delete updated[missingProductId];
+        return updated;
+      });
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+    }
+  };
+
+  // Delete missing product
+  const handleDeleteMissingProduct = async (missingProductId: number) => {
+    if (!confirm("Are you sure you want to remove this missing product?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/missing-products/${missingProductId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete missing product");
+      }
+
+      // Refresh missing products list
+      await fetchOutfit();
+      setMessage("✅ Missing product removed");
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -392,7 +481,32 @@ export default function EditOutfitPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Edit Outfit</h1>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Edit Outfit</h1>
+          {fromBulkUrl && (
+            <a
+              href={fromBulkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-purple-600 hover:text-purple-700 mt-2 text-sm"
+            >
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+              Imported from CostumeWall
+            </a>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Outfit Details & Item Selection */}
@@ -597,6 +711,73 @@ export default function EditOutfitPage() {
                 </div>
               </div>
             </div>
+
+            {/* Missing Products Section */}
+            {missingProducts.length > 0 && (
+              <div className="bg-white shadow-sm rounded-lg p-6 border-2 border-yellow-200">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Missing Products ({missingProducts.filter((p) => p.status === "pending").length})
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  These products were unavailable during bulk import. Provide replacement Amazon URLs to add them to your outfit.
+                </p>
+
+                <div className="space-y-4">
+                  {missingProducts
+                    .filter((product) => product.status === "pending")
+                    .map((product) => (
+                      <div
+                        key={product.id}
+                        className="p-4 bg-yellow-50 border border-yellow-200 rounded-md"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {product.productName}
+                            </p>
+                            <a
+                              href={product.originalAmazonUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-gray-500 hover:text-gray-700 underline mt-1 inline-block"
+                            >
+                              Original Amazon link
+                            </a>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteMissingProduct(product.id)}
+                            className="text-red-600 hover:text-red-800 text-xs ml-2"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="flex space-x-2">
+                          <input
+                            type="url"
+                            placeholder="https://www.amazon.com/... (replacement URL)"
+                            value={replacementUrls[product.id] || ""}
+                            onChange={(e) =>
+                              setReplacementUrls((prev) => ({
+                                ...prev,
+                                [product.id]: e.target.value,
+                              }))
+                            }
+                            className="flex-1 px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm text-gray-900"
+                          />
+                          <button
+                            onClick={() => handleResolveMissingProduct(product.id)}
+                            disabled={!replacementUrls[product.id]}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                          >
+                            Add to Outfit
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column - Collage Preview & Selected Items */}
@@ -640,9 +821,20 @@ export default function EditOutfitPage() {
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {item.title}
-                        </p>
+                        {item.productUrl ? (
+                          <a
+                            href={item.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block"
+                          >
+                            {item.title}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.title}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500">
                           {item.brand} {item.color && `• ${item.color}`}
                           {item.category && ` • ${item.category}`}

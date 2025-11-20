@@ -152,12 +152,26 @@ export default function CreateOutfitPage() {
     }
 
     setIsBulkImporting(true);
-    setBulkImportProgress("Finding Amazon products...");
+    setBulkImportProgress("Checking for duplicates...");
     setMessage("");
     setSkippedProducts([]);
 
     try {
+      // Step 0: Check if this URL has already been imported
+      const checkResponse = await fetch(`/api/outfits/check-bulk-url?url=${encodeURIComponent(costumeWallUrl)}`);
+
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        if (checkData.exists) {
+          setMessage(`⚠️ This CostumeWall URL has already been imported as "${checkData.outfitName}"`);
+          setIsBulkImporting(false);
+          setBulkImportProgress("");
+          return;
+        }
+      }
+
       // Step 1: Scrape CostumeWall page to get all Amazon URLs
+      setBulkImportProgress("Finding Amazon products...");
       const cwResponse = await fetch("/api/scrape-costumewall", {
         method: "POST",
         headers: {
@@ -173,17 +187,28 @@ export default function CreateOutfitPage() {
         throw new Error(error.details || "Failed to scrape CostumeWall page");
       }
 
-      const { products } = await cwResponse.json();
+      const { outfitName: scrapedOutfitName, products, amazonCount, nonAmazonCount } = await cwResponse.json();
 
       if (products.length === 0) {
-        setMessage("⚠️ No Amazon products found on this CostumeWall page");
+        setMessage("⚠️ No products found on this CostumeWall page");
+        setIsBulkImporting(false);
+        setBulkImportProgress("");
+        return;
+      }
+
+      // Separate Amazon and non-Amazon products
+      const amazonProducts = products.filter((p: any) => p.isAmazon);
+      const nonAmazonProducts = products.filter((p: any) => !p.isAmazon);
+
+      if (amazonProducts.length === 0) {
+        setMessage("⚠️ No Amazon products found on this CostumeWall page (all products are from other retailers)");
         setIsBulkImporting(false);
         setBulkImportProgress("");
         return;
       }
 
       setBulkImportProgress(
-        `Found ${products.length} products. Scraping all products...`
+        `Found ${amazonCount} Amazon product${amazonCount !== 1 ? 's' : ''} and ${nonAmazonCount} non-Amazon product${nonAmazonCount !== 1 ? 's' : ''}. Scraping Amazon products...`
       );
 
       // Step 2: Batch scrape all Amazon products with single Chrome instance
@@ -193,7 +218,7 @@ export default function CreateOutfitPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          productUrls: products.map((p: { url: string; label: string }) => p.url),
+          productUrls: amazonProducts.map((p: any) => p.url),
         }),
       });
 
@@ -205,19 +230,31 @@ export default function CreateOutfitPage() {
       const batchResult = await batchResponse.json();
       const { results } = batchResult;
 
-      // Process results and add items to outfit
+      // Process results and build list of successful items
       let successCount = 0;
       const skippedList: { url: string; label: string }[] = [];
+      const successfulItems: ClothingItem[] = [];
 
+      // Add all non-Amazon products to skipped list immediately
+      nonAmazonProducts.forEach((p: any) => {
+        console.log(`Skipping non-Amazon product: ${p.label} (${p.url})`);
+        skippedList.push({
+          url: p.url,
+          label: p.label,
+        });
+      });
+
+      // Process Amazon scrape results
       for (let i = 0; i < results.length; i++) {
         const result = results[i];
         if (result.success && result.item) {
           addItemToOutfit(result.item);
+          successfulItems.push(result.item);
           successCount++;
         } else {
-          // Product failed to scrape or was unavailable
-          const productInfo = products[i];
-          console.log(`Skipping product ${productInfo.label} (${result.url}): ${result.error || "Unknown error"}`);
+          // Amazon product failed to scrape or was unavailable
+          const productInfo = amazonProducts[i];
+          console.log(`Skipping Amazon product ${productInfo.label} (${result.url}): ${result.error || "Unknown error"}`);
           skippedList.push({
             url: result.url,
             label: productInfo.label,
@@ -232,15 +269,60 @@ export default function CreateOutfitPage() {
 
       setSkippedProducts(skippedList);
       setCostumeWallUrl("");
+
+      // Create outfit even if no products were successfully scraped
+      // This logs the fromBulkUrl and prevents future retries
+      setBulkImportProgress("Creating outfit...");
+
+      // Create the outfit automatically using the successful items we just collected
+      const createResponse = await fetch("/api/outfits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: scrapedOutfitName,
+          description: null,
+          occasion: null,
+          season: null,
+          itemIds: successfulItems.map((item) => item.id),
+          inspirationPhotoUrl: null,
+          fromBulkUrl: costumeWallUrl,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json();
+        throw new Error(error.details || "Failed to create outfit");
+      }
+
+      const createResult = await createResponse.json();
+      const outfitId = createResult.outfit.id;
+
+      // Save missing products to database if any
+      if (skippedList.length > 0) {
+        setBulkImportProgress("Saving missing products...");
+
+        await fetch("/api/missing-products", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            outfitId,
+            products: skippedList.map((p) => ({
+              productName: p.label,
+              originalAmazonUrl: p.url,
+            })),
+          }),
+        });
+      }
+
       setBulkImportProgress("");
 
-      if (skippedList.length > 0) {
-        setMessage(
-          `✅ Added ${successCount} products to outfit (${skippedList.length} unavailable products skipped)`
-        );
-      } else {
-        setMessage(`✅ Added all ${successCount} products to outfit`);
-      }
+      // Redirect to edit page
+      window.location.href = `/admin/outfits/edit/${outfitId}`;
+
     } catch (error) {
       setMessage("❌ Error: " + (error as Error).message);
       setBulkImportProgress("");

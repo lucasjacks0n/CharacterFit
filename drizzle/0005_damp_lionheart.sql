@@ -1,0 +1,1 @@
+ALTER TABLE "outfits" ADD COLUMN "from_bulk_url" text;

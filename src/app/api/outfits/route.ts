@@ -5,7 +5,7 @@ import { outfits, outfitItems } from "@/db/schema";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, occasion, season, itemIds, inspirationPhotoUrl } = body;
+    const { name, description, occasion, season, itemIds, inspirationPhotoUrl, fromBulkUrl } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+    if (!itemIds || !Array.isArray(itemIds)) {
       return NextResponse.json(
-        { error: "At least one clothing item is required" },
+        { error: "itemIds must be an array" },
         { status: 400 }
       );
     }
@@ -30,16 +30,19 @@ export async function POST(request: NextRequest) {
         occasion: occasion?.trim() || null,
         season: season?.trim() || null,
         inspirationPhotoUrl: inspirationPhotoUrl || null,
+        fromBulkUrl: fromBulkUrl || null,
       })
       .returning();
 
-    // Create outfit items relationships
-    const outfitItemsData = itemIds.map((itemId: number) => ({
-      outfitId: newOutfit.id,
-      clothingItemId: itemId,
-    }));
+    // Create outfit items relationships (only if there are items)
+    if (itemIds.length > 0) {
+      const outfitItemsData = itemIds.map((itemId: number) => ({
+        outfitId: newOutfit.id,
+        clothingItemId: itemId,
+      }));
 
-    await db.insert(outfitItems).values(outfitItemsData);
+      await db.insert(outfitItems).values(outfitItemsData);
+    }
 
     return NextResponse.json(
       {
