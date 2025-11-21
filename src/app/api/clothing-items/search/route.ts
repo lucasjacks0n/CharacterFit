@@ -2,23 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
 import { sql } from "drizzle-orm";
-import { pipeline } from "@xenova/transformers";
-
-// Cache the embedder to avoid reloading on each request
-let embedder: any = null;
-
-async function getEmbedder() {
-  if (!embedder) {
-    embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-  }
-  return embedder;
-}
-
-async function generateQueryEmbedding(query: string): Promise<number[]> {
-  const embedder = await getEmbedder();
-  const output = await embedder(query, { pooling: "mean", normalize: true });
-  return Array.from(output.data);
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,11 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    // Generate embedding for the search query
-    const queryEmbedding = await generateQueryEmbedding(query);
-    const embeddingStr = `[${queryEmbedding.join(",")}]`;
-
-    // Search using vector similarity
+    const searchTerm = `%${query}%`;
     const results = await db.execute(sql`
       SELECT
         id,
@@ -48,11 +27,14 @@ export async function GET(request: NextRequest) {
         product_url,
         image_url,
         created_at,
-        updated_at,
-        1 - (embedding <=> ${embeddingStr}::vector) as similarity
+        updated_at
       FROM clothing_items
-      WHERE embedding IS NOT NULL
-      ORDER BY embedding <=> ${embeddingStr}::vector
+      WHERE title ILIKE ${searchTerm}
+        OR brand ILIKE ${searchTerm}
+        OR category ILIKE ${searchTerm}
+        OR subcategory ILIKE ${searchTerm}
+        OR color ILIKE ${searchTerm}
+      ORDER BY created_at DESC
       LIMIT 20
     `);
 
@@ -71,7 +53,6 @@ export async function GET(request: NextRequest) {
       imageUrl: row.image_url,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      similarity: parseFloat(row.similarity),
     })) : [];
 
     return NextResponse.json(items);

@@ -1,24 +1,7 @@
 import { NextResponse } from "next/server";
-import { pipeline } from "@xenova/transformers";
 import { db } from "@/db";
 import { clothingItems, outfits } from "@/db/schema";
 import { sql } from "drizzle-orm";
-
-// Cache the embedder to avoid reloading on each request
-let embedder: any = null;
-
-async function getEmbedder() {
-  if (!embedder) {
-    embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-  }
-  return embedder;
-}
-
-async function generateQueryEmbedding(query: string): Promise<number[]> {
-  const embedder = await getEmbedder();
-  const output = await embedder(query, { pooling: "mean", normalize: true });
-  return Array.from(output.data);
-}
 
 export async function GET(request: Request) {
   try {
@@ -45,10 +28,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Generate embedding for the search query
-    const queryEmbedding = await generateQueryEmbedding(query);
-    const embeddingStr = `[${queryEmbedding.join(",")}]`;
-
+    const searchTerm = `%${query}%`;
     const results: {
       items?: any[];
       outfits?: any[];
@@ -66,11 +46,14 @@ export async function GET(request: Request) {
           color,
           price,
           image_url,
-          product_url,
-          1 - (embedding <=> ${embeddingStr}::vector) as similarity
+          product_url
         FROM clothing_items
-        WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> ${embeddingStr}::vector
+        WHERE title ILIKE ${searchTerm}
+          OR brand ILIKE ${searchTerm}
+          OR category ILIKE ${searchTerm}
+          OR subcategory ILIKE ${searchTerm}
+          OR color ILIKE ${searchTerm}
+        ORDER BY created_at DESC
         LIMIT ${limit}
       `);
 
@@ -85,7 +68,6 @@ export async function GET(request: Request) {
         price: row.price,
         imageUrl: row.image_url,
         productUrl: row.product_url,
-        similarity: parseFloat(row.similarity),
       })) : [];
     }
 
@@ -98,12 +80,16 @@ export async function GET(request: Request) {
           description,
           occasion,
           season,
-          inspiration_photo_url as image_url,
-          1 - (embedding <=> ${embeddingStr}::vector) as similarity
+          inspiration_photo_url as image_url
         FROM outfits
-        WHERE embedding IS NOT NULL
-          AND status = 1
-        ORDER BY embedding <=> ${embeddingStr}::vector
+        WHERE status = 1
+          AND (
+            name ILIKE ${searchTerm}
+            OR description ILIKE ${searchTerm}
+            OR occasion ILIKE ${searchTerm}
+            OR season ILIKE ${searchTerm}
+          )
+        ORDER BY created_at DESC
         LIMIT ${limit}
       `);
 
@@ -115,7 +101,6 @@ export async function GET(request: Request) {
         occasion: row.occasion,
         season: row.season,
         imageUrl: row.image_url,
-        similarity: parseFloat(row.similarity),
       })) : [];
     }
 
