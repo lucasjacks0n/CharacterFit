@@ -63,6 +63,119 @@ When adding UUIDs to existing tables:
 
 ---
 
+## Frontend Best Practices
+
+### Form Input Styling
+
+**IMPORTANT:** Always ensure form inputs have proper text color styling for visibility and accessibility.
+
+#### Required Input Styles:
+
+All text inputs, textareas, and select elements MUST include:
+- `text-gray-900` - Makes the input text dark and visible
+- `placeholder:text-gray-400` - Makes placeholder text lighter but still readable
+
+#### Examples of What NOT to Do:
+
+```typescript
+// ❌ BAD - No text color specified, text may be invisible
+<input
+  type="text"
+  className="px-4 py-2 border border-gray-300 rounded-lg"
+/>
+
+// ❌ BAD - Placeholder not styled
+<input
+  type="text"
+  placeholder="Search..."
+  className="px-4 py-2 border text-gray-900"
+/>
+```
+
+#### Examples of What TO Do:
+
+```typescript
+// ✅ GOOD - Text and placeholder properly styled
+<input
+  type="text"
+  placeholder="Search for outfits..."
+  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400"
+/>
+
+// ✅ GOOD - Textarea with proper styling
+<textarea
+  placeholder="Enter description..."
+  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400"
+/>
+
+// ✅ GOOD - Select with proper styling
+<select className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900">
+  <option>Choose an option</option>
+</select>
+```
+
+#### Standard Input Class Pattern:
+
+Use this base pattern for all form inputs:
+```
+className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+```
+
+---
+
+## API Security Best Practices
+
+### Limit Parameter Validation
+
+**IMPORTANT:** Always validate and cap limit parameters to prevent data scraping and database overload.
+
+#### Required Implementation:
+
+All API endpoints that accept a `limit` parameter MUST:
+- Define a reasonable `MAX_LIMIT` (e.g., 50-100)
+- Validate the limit is between 1 and MAX_LIMIT
+- Reject or cap requests that exceed the limit
+
+#### Examples of What NOT to Do:
+
+```typescript
+// ❌ BAD - No limit validation, allows unlimited scraping
+const limit = parseInt(searchParams.get("limit") || "20");
+const results = await db.select().from(outfits).limit(limit);
+
+// ❌ BAD - Trusts user input directly
+const limit = parseInt(searchParams.get("limit") || "20");
+```
+
+#### Examples of What TO Do:
+
+```typescript
+// ✅ GOOD - Proper limit validation
+const requestedLimit = parseInt(searchParams.get("limit") || "20");
+const MAX_LIMIT = 50;
+const limit = Math.min(Math.max(requestedLimit, 1), MAX_LIMIT);
+
+// ✅ GOOD - With validation error
+if (requestedLimit > MAX_LIMIT) {
+  return NextResponse.json(
+    { error: `Limit cannot exceed ${MAX_LIMIT}` },
+    { status: 400 }
+  );
+}
+const limit = Math.max(requestedLimit, 1);
+```
+
+#### Security Considerations:
+
+- **Prevent scraping**: Limits stop users from extracting entire datasets
+- **Prevent DoS**: Large queries can overload the database
+- **Rate limiting**: Consider adding rate limits for sensitive endpoints
+- **Authentication**: Consider requiring auth for search/list endpoints
+
+---
+
 ## Additional Guidelines
 
 (Add other development guidelines here as needed)
+
+Whenever you run a psql command you have to use the .env database url, "$DATABASE_URL" will never be available if not

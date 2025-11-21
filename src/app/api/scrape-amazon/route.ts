@@ -5,8 +5,9 @@ import { clothingItems } from "@/db/schema";
 import { normalizeUrl } from "@/lib/url-utils";
 import { normalizeAmazonUrl } from "@/lib/amazon-url-utils";
 import { downloadAndUploadImage } from "@/lib/google-storage";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { generateClothingItemEmbedding } from "@/lib/embeddings";
 
 export async function POST(request: NextRequest) {
   try {
@@ -108,6 +109,15 @@ export async function POST(request: NextRequest) {
           imageUrl: storedImageUrl,
         })
         .returning();
+
+      // Generate and update embedding (non-blocking)
+      generateClothingItemEmbedding(scrapedData.title)
+        .then((embedding) => {
+          return db.execute(
+            sql`UPDATE clothing_items SET embedding = ${embedding}::vector WHERE id = ${newItem.id}`
+          );
+        })
+        .catch((err) => console.error("Failed to generate clothing item embedding:", err));
 
       return NextResponse.json(
         {

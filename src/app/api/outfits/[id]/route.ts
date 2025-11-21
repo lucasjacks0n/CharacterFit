@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { outfits, outfitItems, clothingItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { generateOutfitEmbedding } from "@/lib/embeddings";
 
 // GET single outfit
 export async function GET(
@@ -105,6 +106,15 @@ export async function PUT(
     }));
 
     await db.insert(outfitItems).values(outfitItemsData);
+
+    // Generate and update embedding (non-blocking)
+    generateOutfitEmbedding(name.trim())
+      .then((embedding) => {
+        return db.execute(
+          sql`UPDATE outfits SET embedding = ${embedding}::vector WHERE id = ${outfitId}`
+        );
+      })
+      .catch((err) => console.error("Failed to generate outfit embedding:", err));
 
     return NextResponse.json({
       message: "Outfit updated successfully",

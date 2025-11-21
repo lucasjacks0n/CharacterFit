@@ -6,6 +6,7 @@ import {
   timestamp,
   integer,
   decimal,
+  vector,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -31,9 +32,8 @@ export const clothingItems = pgTable("clothing_items", {
   productUrl: text("product_url"),
   imageUrl: text("image_url"),
 
-  // For now you can store embeddings as JSON; later swap to pgvector
-  // embedding: vector('embedding', { dimensions: 1536 }),
-  embeddingJson: text("embedding_json"), // optional: JSON string of the embedding
+  // Vector embedding for semantic search (384 dimensions for all-MiniLM-L6-v2)
+  embedding: vector("embedding", { dimensions: 384 }),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -50,6 +50,10 @@ export const outfits = pgTable("outfits", {
   inspirationPhotoUrl: text("inspiration_photo_url"), // original inspiration/costume photo
   collageMetadata: text("collage_metadata"), // JSON with bounding boxes for clickable products
   fromBulkUrl: text("from_bulk_url"), // CostumeWall URL used for bulk import (if applicable)
+
+  // Vector embedding for semantic search (384 dimensions for all-MiniLM-L6-v2)
+  embedding: vector("embedding", { dimensions: 384 }),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { scrapeAmazonProductsBatch, type BatchScrapeResult } from "@/lib/scrapers/amazon-scraper";
 import { normalizeAmazonUrl } from "@/lib/amazon-url-utils";
 import { downloadAndUploadImage } from "@/lib/google-storage";
 import { randomUUID } from "crypto";
+import { generateClothingItemEmbedding } from "@/lib/embeddings";
 
 export async function POST(request: Request) {
   try {
@@ -83,6 +84,15 @@ export async function POST(request: Request) {
               description: result.data.description || null,
             })
             .returning();
+
+          // Generate and update embedding (non-blocking)
+          generateClothingItemEmbedding(result.data.title)
+            .then((embedding) => {
+              return db.execute(
+                sql`UPDATE clothing_items SET embedding = ${embedding}::vector WHERE id = ${newItem.id}`
+              );
+            })
+            .catch((err) => console.error("Failed to generate clothing item embedding:", err));
 
           return {
             url: result.url,

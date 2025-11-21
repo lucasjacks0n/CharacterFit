@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { clothingItems } from "@/db/schema";
 import { normalizeUrl } from "@/lib/url-utils";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { generateClothingItemEmbedding } from "@/lib/embeddings";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +68,15 @@ export async function POST(request: NextRequest) {
         imageUrl: imageUrl || null,
       })
       .returning();
+
+    // Generate and update embedding (non-blocking)
+    generateClothingItemEmbedding(title)
+      .then((embedding) => {
+        return db.execute(
+          sql`UPDATE clothing_items SET embedding = ${embedding}::vector WHERE id = ${newItem.id}`
+        );
+      })
+      .catch((err) => console.error("Failed to generate clothing item embedding:", err));
 
     return NextResponse.json(newItem, { status: 201 });
   } catch (error) {

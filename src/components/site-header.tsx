@@ -27,6 +27,25 @@ export function SiteHeader({
           </p>
         </Link>
         <div className="flex items-center gap-4">
+          <Link
+            href="/search"
+            className="inline-flex items-center px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            Search
+          </Link>
           {showAdminButton && isAdmin && adminButtonHref && (
             <Link
               href={adminButtonHref}

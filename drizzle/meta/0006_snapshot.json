@@ -1,0 +1,14 @@
+{
+  "id": "0006_add_vector_embeddings",
+  "prevId": "0005_damp_lionheart",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {},
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

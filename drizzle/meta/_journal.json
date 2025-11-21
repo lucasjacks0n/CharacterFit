@@ -43,6 +43,13 @@
       "when": 1763582169655,
       "tag": "0005_damp_lionheart",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1732071600000,
+      "tag": "0006_add_vector_embeddings",
+      "breakpoints": true
     }
   ]
 }
