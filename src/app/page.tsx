@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { outfits, outfitItems, clothingItems } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql, count } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -51,18 +51,41 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   console.log("load home page");
   const { userId, sessionClaims } = await auth();
   const isAdmin = sessionClaims?.metadata?.role === "admin";
 
-  // Fetch 12 most recent approved outfits
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page || "1", 10));
+  const limit = 30;
+  const offset = (page - 1) * limit;
+
+  // Get total count of approved outfits
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(outfits)
+    .where(eq(outfits.status, 1));
+
+  // Fetch paginated approved outfits
   const allOutfits = await db
     .select()
     .from(outfits)
     .where(eq(outfits.status, 1))
-    .orderBy(desc(outfits.createdAt))
-    .limit(12);
+    .orderBy(
+      sql`CASE WHEN ${outfits.status} = 1 THEN 0 ELSE 1 END`,
+      desc(outfits.createdAt)
+    )
+    .limit(limit)
+    .offset(offset);
+
+  const totalPages = Math.ceil(total / limit);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
 
   // For each outfit, get its items
   const outfitsWithItems: Outfit[] = await Promise.all(
@@ -114,7 +137,8 @@ export default async function Home() {
             Recent Outfits
           </h2>
           <p className="text-gray-600 mt-1">
-            Check out our latest outfit combinations
+            Showing {(page - 1) * limit + 1} - {Math.min(page * limit, total)}{" "}
+            of {total} outfits
           </p>
         </div>
 
@@ -125,11 +149,72 @@ export default async function Home() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {outfitsWithItems.map((outfit) => (
-              <OutfitCard key={outfit.id} outfit={outfit} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {outfitsWithItems.map((outfit) => (
+                <OutfitCard key={outfit.id} outfit={outfit} />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-2">
+                {hasPrevPage ? (
+                  <Link
+                    href={`/?page=${page - 1}`}
+                    className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Previous
+                  </Link>
+                ) : (
+                  <span className="px-4 py-2 rounded-md border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed">
+                    Previous
+                  </span>
+                )}
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    return (
+                      <Link
+                        key={pageNum}
+                        href={`/?page=${pageNum}`}
+                        className={`px-4 py-2 rounded-md ${
+                          page === pageNum
+                            ? "bg-blue-600 text-white"
+                            : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        {pageNum}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {hasNextPage ? (
+                  <Link
+                    href={`/?page=${page + 1}`}
+                    className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Next
+                  </Link>
+                ) : (
+                  <span className="px-4 py-2 rounded-md border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed">
+                    Next
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
