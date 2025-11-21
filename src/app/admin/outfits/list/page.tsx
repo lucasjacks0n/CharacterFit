@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -18,13 +18,15 @@ interface Outfit {
   description: string | null;
   occasion: string | null;
   season: string | null;
+  status: number;
   imageUrl: string | null;
   inspirationPhotoUrl: string | null;
   createdAt: string;
   items?: ClothingItem[];
+  missingProductsCount?: number;
 }
 
-export default function OutfitsListPage() {
+function OutfitsListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -45,6 +47,7 @@ export default function OutfitsListPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [approvedCount, setApprovedCount] = useState(0);
 
   // Search state - initialize from URL
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || "");
@@ -102,6 +105,7 @@ export default function OutfitsListPage() {
         setTotalPages(data.pagination.totalPages);
         setHasNextPage(data.pagination.hasNextPage);
         setHasPrevPage(data.pagination.hasPrevPage);
+        setApprovedCount(data.pagination.approvedCount);
       }
     } catch (error) {
       console.error("Failed to fetch outfits:", error);
@@ -127,6 +131,45 @@ export default function OutfitsListPage() {
       } else {
         const error = await response.json();
         throw new Error(error.details || "Failed to delete outfit");
+      }
+    } catch (error) {
+      setMessage("❌ Error: " + (error as Error).message);
+    }
+  };
+
+  const handleUpdateStatus = async (outfitId: number, newStatus: number, outfitName: string) => {
+    try {
+      // Get current outfit data first
+      const getResponse = await fetch(`/api/outfits/${outfitId}`);
+      if (!getResponse.ok) {
+        throw new Error("Failed to fetch outfit data");
+      }
+      const currentOutfit = await getResponse.json();
+
+      // Update with new status
+      const response = await fetch(`/api/outfits/${outfitId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: currentOutfit.name,
+          description: currentOutfit.description,
+          occasion: currentOutfit.occasion,
+          season: currentOutfit.season,
+          status: newStatus,
+          itemIds: currentOutfit.items?.map((item: any) => item.id) || [],
+          inspirationPhotoUrl: currentOutfit.inspirationPhotoUrl,
+        }),
+      });
+
+      if (response.ok) {
+        const statusText = newStatus === 1 ? "approved" : newStatus === 2 ? "rejected" : "pending";
+        setMessage(`✅ "${outfitName}" ${statusText}`);
+        fetchOutfits(); // Refresh the list
+      } else {
+        const error = await response.json();
+        throw new Error(error.details || "Failed to update status");
       }
     } catch (error) {
       setMessage("❌ Error: " + (error as Error).message);
@@ -320,7 +363,7 @@ export default function OutfitsListPage() {
           </div>
           {total > 0 && (
             <p className="text-sm text-gray-600 mt-2">
-              Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} of {total} outfits
+              Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} of {total} outfits ({approvedCount} approved)
             </p>
           )}
         </div>
@@ -416,6 +459,21 @@ export default function OutfitsListPage() {
                   )}
 
                   <div className="flex flex-wrap gap-2 mb-4">
+                    {outfit.status === 0 && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded font-medium">
+                        Pending
+                      </span>
+                    )}
+                    {outfit.status === 1 && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
+                        ✓ Approved
+                      </span>
+                    )}
+                    {outfit.status === 2 && (
+                      <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded font-medium">
+                        ✗ Rejected
+                      </span>
+                    )}
                     {outfit.occasion && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                         {outfit.occasion}
@@ -431,22 +489,37 @@ export default function OutfitsListPage() {
                         {outfit.items.length} items
                       </span>
                     )}
+                    {outfit.missingProductsCount !== undefined && outfit.missingProductsCount > 0 && (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded font-medium">
+                        ⚠ {outfit.missingProductsCount} missing
+                      </span>
+                    )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex space-x-2">
-                    <Link
-                      href={`/admin/outfits/edit/${outfit.id}`}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors text-center"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(outfit.id, outfit.name)}
-                      className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded-md hover:bg-red-100 transition-colors"
-                    >
-                      Delete
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <Link
+                        href={`/admin/outfits/edit/${outfit.id}`}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors text-center"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(outfit.id, outfit.name)}
+                        className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded-md hover:bg-red-100 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    {outfit.status !== 1 && (
+                      <button
+                        onClick={() => handleUpdateStatus(outfit.id, 1, outfit.name)}
+                        className="w-full px-4 py-2 bg-green-50 text-green-700 text-sm rounded-md hover:bg-green-100 transition-colors font-medium"
+                      >
+                        ✓ Approve
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -546,5 +619,22 @@ export default function OutfitsListPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OutfitsListPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            <p className="text-gray-600 mt-4">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <OutfitsListContent />
+    </Suspense>
   );
 }

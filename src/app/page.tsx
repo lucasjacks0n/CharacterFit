@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
+import { OutfitCard } from "@/components/outfit-card";
 
 interface Outfit {
   id: number;
@@ -55,10 +56,11 @@ export default async function Home() {
   const { userId, sessionClaims } = await auth();
   const isAdmin = sessionClaims?.metadata?.role === "admin";
 
-  // Fetch 12 most recent outfits
+  // Fetch 12 most recent approved outfits
   const allOutfits = await db
     .select()
     .from(outfits)
+    .where(eq(outfits.status, 1))
     .orderBy(desc(outfits.createdAt))
     .limit(12);
 
@@ -125,76 +127,7 @@ export default async function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {outfitsWithItems.map((outfit) => (
-              <Link
-                key={outfit.id}
-                href={`/outfits/${outfit.id}`}
-                className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
-              >
-                {/* Outfit Photo or Items Preview */}
-                <div className="bg-gray-100 p-4">
-                  {outfit.imageUrl ? (
-                    /* Show collage (merged with inspiration) if available */
-                    <div className="w-full">
-                      <img
-                        src={outfit.imageUrl}
-                        alt={outfit.name}
-                        className="w-full h-full object-cover rounded"
-                      />
-                    </div>
-                  ) : outfit.items.length > 0 ? (
-                    /* Fallback to item grid */
-                    <div className="grid grid-cols-3 gap-2">
-                      {outfit.items.slice(0, 3).map((item) => (
-                        <div
-                          key={item.id}
-                          className="aspect-square bg-gray-200 rounded"
-                        >
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.title}
-                              className="w-full h-full object-cover rounded"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                              No image
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {outfit.items.length > 3 && (
-                        <div className="aspect-square bg-gray-300 rounded flex items-center justify-center text-gray-600 text-sm font-medium">
-                          +{outfit.items.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* No image or items */
-                    <div className="aspect-[4/5] bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-gray-400">No image</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Outfit Details */}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {outfit.name}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {outfit.occasion && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                        {outfit.occasion}
-                      </span>
-                    )}
-                    {outfit.season && (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                        {outfit.season}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
+              <OutfitCard key={outfit.id} outfit={outfit} />
             ))}
           </div>
         )}

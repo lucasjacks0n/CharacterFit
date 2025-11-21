@@ -98,10 +98,11 @@ export async function GET(request: Request) {
           description,
           occasion,
           season,
-          image_url,
+          inspiration_photo_url as image_url,
           1 - (embedding <=> ${embeddingStr}::vector) as similarity
         FROM outfits
         WHERE embedding IS NOT NULL
+          AND status = 1
         ORDER BY embedding <=> ${embeddingStr}::vector
         LIMIT ${limit}
       `);

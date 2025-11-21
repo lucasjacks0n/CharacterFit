@@ -26,6 +26,7 @@ export default function EditOutfitPage() {
   const [outfitDescription, setOutfitDescription] = useState("");
   const [occasion, setOccasion] = useState("");
   const [season, setSeason] = useState("");
+  const [status, setStatus] = useState(0);
   const [inspirationPhoto, setInspirationPhoto] = useState<File | null>(null);
   const [inspirationPhotoUrl, setInspirationPhotoUrl] = useState<string>("");
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -74,6 +75,7 @@ export default function EditOutfitPage() {
         setOutfitDescription(data.description || "");
         setOccasion(data.occasion || "");
         setSeason(data.season || "");
+        setStatus(data.status ?? 0);
         setSelectedItems(data.items || []);
         setCollageUrl(data.imageUrl || null);
         setInspirationPhotoUrl(data.inspirationPhotoUrl || "");
@@ -138,7 +140,7 @@ export default function EditOutfitPage() {
     }, 1000); // Wait 1 second after user stops typing
 
     return () => clearTimeout(timer);
-  }, [outfitName, outfitDescription, occasion, season, selectedItems]);
+  }, [outfitName, outfitDescription, occasion, season, status, selectedItems]);
 
   const autoSave = async () => {
     if (!outfitName.trim() || selectedItems.length === 0) return;
@@ -154,6 +156,7 @@ export default function EditOutfitPage() {
           description: outfitDescription || null,
           occasion: occasion || null,
           season: season || null,
+          status: status,
           itemIds: selectedItems.map((item) => item.id),
           inspirationPhotoUrl: inspirationPhotoUrl || null,
         }),
@@ -268,6 +271,7 @@ export default function EditOutfitPage() {
           description: outfitDescription || null,
           occasion: occasion || null,
           season: season || null,
+          status: status,
           itemIds: selectedItems.map((item) => item.id),
           inspirationPhotoUrl: photoUrl,
         }),
@@ -566,7 +570,7 @@ export default function EditOutfitPage() {
                       placeholder="casual, formal, work..."
                       value={occasion}
                       onChange={(e) => setOccasion(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder:text-gray-400"
                     />
                   </div>
 
@@ -583,9 +587,28 @@ export default function EditOutfitPage() {
                       placeholder="spring, summer, fall, winter"
                       value={season}
                       onChange={(e) => setSeason(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder:text-gray-400"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="status"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    value={status}
+                    onChange={(e) => setStatus(parseInt(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                  >
+                    <option value={0}>Pending / Draft</option>
+                    <option value={1}>Approved</option>
+                    <option value={2}>Rejected</option>
+                  </select>
                 </div>
 
                 {/* Inspiration Photo Upload */}

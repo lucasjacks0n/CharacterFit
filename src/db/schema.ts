@@ -51,6 +51,9 @@ export const outfits = pgTable("outfits", {
   collageMetadata: text("collage_metadata"), // JSON with bounding boxes for clickable products
   fromBulkUrl: text("from_bulk_url"), // CostumeWall URL used for bulk import (if applicable)
 
+  // Status: 0 = pending/draft, 1 = approved, 2 = rejected
+  status: integer("status").notNull().default(0),
+
   // Vector embedding for semantic search (384 dimensions for all-MiniLM-L6-v2)
   embedding: vector("embedding", { dimensions: 384 }),
 

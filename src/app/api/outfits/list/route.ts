@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { outfits, outfitItems, clothingItems } from "@/db/schema";
+import { outfits, outfitItems, clothingItems, missingProducts } from "@/db/schema";
 import { eq, desc, ilike, or, and, sql, count } from "drizzle-orm";
 
 export async function GET(request: Request) {
@@ -29,22 +29,34 @@ export async function GET(request: Request) {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // Get total count
+    // Get total count and approved count
     const [{ total }] = await db
       .select({ total: count() })
       .from(outfits)
       .where(whereClause);
 
-    // Get paginated outfits
+    const [{ approvedCount }] = await db
+      .select({ approvedCount: count() })
+      .from(outfits)
+      .where(
+        whereClause
+          ? and(whereClause, eq(outfits.status, 1))
+          : eq(outfits.status, 1)
+      );
+
+    // Get paginated outfits - approved first, then by created date
     const allOutfits = await db
       .select()
       .from(outfits)
       .where(whereClause)
-      .orderBy(desc(outfits.createdAt))
+      .orderBy(
+        sql`CASE WHEN ${outfits.status} = 1 THEN 0 ELSE 1 END`,
+        desc(outfits.createdAt)
+      )
       .limit(limit)
       .offset(offset);
 
-    // For each outfit, get its items
+    // For each outfit, get its items and missing products count
     const outfitsWithItems = await Promise.all(
       allOutfits.map(async (outfit) => {
         const items = await db
@@ -63,9 +75,21 @@ export async function GET(request: Request) {
           .where(eq(outfitItems.outfitId, outfit.id))
           .orderBy(desc(clothingItems.id));
 
+        // Get count of pending missing products for this outfit
+        const [{ missingCount }] = await db
+          .select({ missingCount: count() })
+          .from(missingProducts)
+          .where(
+            and(
+              eq(missingProducts.outfitId, outfit.id),
+              eq(missingProducts.status, "pending")
+            )
+          );
+
         return {
           ...outfit,
           items,
+          missingProductsCount: missingCount,
         };
       })
     );
@@ -81,6 +105,7 @@ export async function GET(request: Request) {
         totalPages,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
+        approvedCount,
       },
     });
   } catch (error) {

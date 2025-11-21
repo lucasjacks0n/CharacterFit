@@ -66,7 +66,7 @@ export async function PUT(
     const { id } = await params;
     const outfitId = parseInt(id);
     const body = await request.json();
-    const { name, description, occasion, season, itemIds, inspirationPhotoUrl } = body;
+    const { name, description, occasion, season, status, itemIds, inspirationPhotoUrl } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -90,6 +90,7 @@ export async function PUT(
         description: description?.trim() || null,
         occasion: occasion?.trim() || null,
         season: season?.trim() || null,
+        status: status ?? 0,
         inspirationPhotoUrl: inspirationPhotoUrl || null,
         updatedAt: new Date(),
       })

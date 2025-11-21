@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { OutfitCard } from "@/components/outfit-card";
 
 interface SearchResult {
   items?: {
@@ -28,7 +29,7 @@ interface SearchResult {
   }[];
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
 
@@ -116,47 +117,14 @@ export default function SearchPage() {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {results.outfits.map((outfit) => (
-                    <Link
+                    <OutfitCard
                       key={outfit.id}
-                      href={`/outfits/${outfit.id}`}
-                      className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      <div className="aspect-[4/5] bg-gray-200">
-                        {outfit.imageUrl ? (
-                          <img
-                            src={outfit.imageUrl}
-                            alt={outfit.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            No image
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          {outfit.name}
-                        </h3>
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-wrap gap-2">
-                            {outfit.occasion && (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                {outfit.occasion}
-                              </span>
-                            )}
-                            {outfit.season && (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                                {outfit.season}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {Math.round(outfit.similarity * 100)}% match
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
+                      outfit={{
+                        ...outfit,
+                        inspirationPhotoUrl: outfit.imageUrl,
+                      }}
+                      similarity={outfit.similarity}
+                    />
                   ))}
                 </div>
               </div>
@@ -172,5 +140,23 @@ export default function SearchPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <SiteHeader isAdmin={false} />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600 mt-4">Loading...</p>
+          </div>
+        </main>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }
