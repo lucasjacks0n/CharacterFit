@@ -28,18 +28,19 @@ export function SiteHeader({
               alt="CharacterFits Logo"
               width={200}
               height={60}
-              className="h-20 w-auto"
+              className="max-h-12 sm:max-h-16 md:max-h-20 w-auto object-contain"
               priority
             />
           </div>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link
             href="/search"
-            className="inline-flex items-center px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center p-2 sm:px-4 sm:py-2 text-gray-700 hover:text-gray-900 transition-colors"
+            title="Search"
           >
             <svg
-              className="w-5 h-5 mr-2"
+              className="w-5 h-5 sm:mr-2"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -51,15 +52,16 @@ export function SiteHeader({
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            Search
+            <span className="hidden sm:inline">Search</span>
           </Link>
           {showAdminButton && isAdmin && adminButtonHref && (
             <Link
               href={adminButtonHref}
-              className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              className="inline-flex items-center p-2 sm:px-4 sm:py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              title={adminButtonText || "Edit"}
             >
               <svg
-                className="w-5 h-5 mr-2"
+                className="w-5 h-5 sm:mr-2"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -71,15 +73,17 @@ export function SiteHeader({
                   d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                 />
               </svg>
-              {adminButtonText || "Edit"}
+              <span className="hidden sm:inline">{adminButtonText || "Edit"}</span>
             </Link>
           )}
           {isAdmin && !showAdminButton && (
             <Link
               href="/admin"
-              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              className="p-2 sm:px-4 sm:py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm sm:text-base"
+              title="Admin Dashboard"
             >
-              Admin Dashboard
+              <span className="hidden sm:inline">Admin Dashboard</span>
+              <span className="sm:hidden">Admin</span>
             </Link>
           )}
           {isAdmin && <UserButton afterSignOutUrl="/" />}
