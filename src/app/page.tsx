@@ -62,7 +62,7 @@ export default async function Home({
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1", 10));
-  const limit = 30;
+  const limit = 32;
   const offset = (page - 1) * limit;
 
   // Get total count of approved outfits
