@@ -9,6 +9,7 @@ import { OutfitContent } from "./outfit-content";
 interface ClothingItem {
   id: number;
   title: string;
+  displayTitle: string | null;
   brand: string | null;
   price: string | null;
   color: string | null;
@@ -131,6 +132,7 @@ export default async function OutfitPage({
     .select({
       id: clothingItems.id,
       title: clothingItems.title,
+      displayTitle: clothingItems.displayTitle,
       brand: clothingItems.brand,
       price: clothingItems.price,
       color: clothingItems.color,

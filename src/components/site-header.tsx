@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { UserButton } from "@clerk/nextjs";
 
 interface SiteHeaderProps {
@@ -16,15 +17,21 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
         <Link
           href="/"
           className="cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <h1 className="text-3xl font-bold text-gray-900">CharacterFits</h1>
-          <p className="text-gray-600 mt-1">
-            Character Costume & Cosplay Builder
-          </p>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="CharacterFits Logo"
+              width={200}
+              height={60}
+              className="h-20 w-auto"
+              priority
+            />
+          </div>
         </Link>
         <div className="flex items-center gap-4">
           <Link

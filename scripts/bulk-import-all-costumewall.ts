@@ -1,6 +1,6 @@
 // Script to bulk import all costume pages from CostumeWall sitemap
 
-const SITEMAP_URL = "https://costumewall.com/post-sitemap.xml";
+const SITEMAP_URL = "https://costumewall.com/post-sitemap2.xml";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const DELAY_BETWEEN_IMPORTS = 0; // 10 seconds between each import (increased for stability)
@@ -90,7 +90,8 @@ async function importCostumeWallPage(
       throw new Error(error.details || "Failed to scrape CostumeWall page");
     }
 
-    const { outfitName, products, amazonCount, nonAmazonCount } = await cwResponse.json();
+    const { outfitName, products, amazonCount, nonAmazonCount } =
+      await cwResponse.json();
     console.log(
       `  Found outfit: "${outfitName}" with ${products.length} products (${amazonCount} Amazon, ${nonAmazonCount} non-Amazon)`
     );
@@ -105,7 +106,9 @@ async function importCostumeWallPage(
     const nonAmazonProducts = products.filter((p: any) => !p.isAmazon);
 
     if (amazonProducts.length === 0) {
-      console.log(`  ⚠️  No Amazon products found (all from other retailers), skipping\n`);
+      console.log(
+        `  ⚠️  No Amazon products found (all from other retailers), skipping\n`
+      );
       return false;
     }
 

@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 interface ClothingItem {
   id: number;
   title: string;
+  displayTitle: string | null;
   brand: string | null;
   price: string | null;
   color: string | null;
@@ -127,17 +128,31 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
                     <div className="flex">
                       {/* Item Details */}
                       <div className="flex-1 p-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          {item.title}
-                        </h3>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {item.displayTitle}
+                          </h3>
+
+                          {/* View Product Button */}
+                          {item.productUrl && (
+                            <a
+                              href={
+                                item.productUrl.includes("amazon.com")
+                                  ? `${item.productUrl}${
+                                      item.productUrl.includes("?") ? "&" : "?"
+                                    }tag=characterfits-20`
+                                  : item.productUrl
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors whitespace-nowrap"
+                            >
+                              View Product
+                            </a>
+                          )}
+                        </div>
 
                         <div className="space-y-1 text-sm text-gray-600">
-                          {item.color && (
-                            <p>
-                              <span className="font-medium">Color:</span>{" "}
-                              {item.color}
-                            </p>
-                          )}
                           {item.category && (
                             <p>
                               <span className="font-medium">Category:</span>{" "}
@@ -145,24 +160,6 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
                             </p>
                           )}
                         </div>
-
-                        {/* View Product Button */}
-                        {item.productUrl && (
-                          <a
-                            href={
-                              item.productUrl.includes("amazon.com")
-                                ? `${item.productUrl}${
-                                    item.productUrl.includes("?") ? "&" : "?"
-                                  }tag=characterfits-20`
-                                : item.productUrl
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-3 inline-block px-4 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors"
-                          >
-                            View Product
-                          </a>
-                        )}
                       </div>
                     </div>
                   </div>

@@ -16,6 +16,7 @@ export const clothingItems = pgTable("clothing_items", {
 
   // Core identity
   title: varchar("title", { length: 255 }).notNull(), // was "name"
+  displayTitle: varchar("display_title", { length: 100 }), // AI-generated short title (5 words or less)
   brand: varchar("brand", { length: 255 }), // e.g. "Amazon Essentials"
 
   // Basic categorization

@@ -44,21 +44,59 @@ export async function GET(request: Request) {
           : eq(outfits.status, 1)
       );
 
-    // Get paginated outfits - approved first, then by created date
-    const allOutfits = await db
-      .select()
-      .from(outfits)
-      .where(whereClause)
-      .orderBy(
-        sql`CASE WHEN ${outfits.status} = 1 THEN 0 ELSE 1 END`,
-        desc(outfits.createdAt)
-      )
-      .limit(limit)
-      .offset(offset);
+    // Get paginated outfits - approved first, then by missing products count ascending
+    let allOutfits;
 
-    // For each outfit, get its items and missing products count
+    if (search) {
+      const searchTerm = `%${search}%`;
+      allOutfits = await db.execute(sql`
+        SELECT
+          o.*,
+          (
+            SELECT COUNT(*)
+            FROM missing_products mp
+            WHERE mp.outfit_id = o.id
+              AND mp.status = 'pending'
+          ) as missing_products_count
+        FROM outfits o
+        WHERE (
+          o.name ILIKE ${searchTerm}
+          OR o.description ILIKE ${searchTerm}
+          OR o.occasion ILIKE ${searchTerm}
+          OR o.season ILIKE ${searchTerm}
+        )
+        ORDER BY
+          CASE WHEN o.status = 1 THEN 0 ELSE 1 END,
+          missing_products_count ASC,
+          o.created_at DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `);
+    } else {
+      allOutfits = await db.execute(sql`
+        SELECT
+          o.*,
+          (
+            SELECT COUNT(*)
+            FROM missing_products mp
+            WHERE mp.outfit_id = o.id
+              AND mp.status = 'pending'
+          ) as missing_products_count
+        FROM outfits o
+        ORDER BY
+          CASE WHEN o.status = 1 THEN 0 ELSE 1 END,
+          missing_products_count ASC,
+          o.created_at DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `);
+    }
+
+    const outfitsRows = (allOutfits as any).rows || allOutfits || [];
+
+    // For each outfit, get its items
     const outfitsWithItems = await Promise.all(
-      allOutfits.map(async (outfit) => {
+      outfitsRows.map(async (outfit: any) => {
         const items = await db
           .select({
             id: clothingItems.id,
@@ -75,21 +113,19 @@ export async function GET(request: Request) {
           .where(eq(outfitItems.outfitId, outfit.id))
           .orderBy(desc(clothingItems.id));
 
-        // Get count of pending missing products for this outfit
-        const [{ missingCount }] = await db
-          .select({ missingCount: count() })
-          .from(missingProducts)
-          .where(
-            and(
-              eq(missingProducts.outfitId, outfit.id),
-              eq(missingProducts.status, "pending")
-            )
-          );
-
         return {
-          ...outfit,
+          id: outfit.id,
+          name: outfit.name,
+          description: outfit.description,
+          occasion: outfit.occasion,
+          season: outfit.season,
+          status: outfit.status,
+          imageUrl: outfit.image_url,
+          inspirationPhotoUrl: outfit.inspiration_photo_url,
+          createdAt: outfit.created_at,
+          updatedAt: outfit.updated_at,
           items,
-          missingProductsCount: missingCount,
+          missingProductsCount: parseInt(outfit.missing_products_count) || 0,
         };
       })
     );
