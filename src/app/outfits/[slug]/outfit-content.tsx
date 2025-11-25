@@ -50,6 +50,16 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Page Title - H1 for SEO */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            How to Dress Like {outfit.name}
+          </h1>
+          <p className="text-lg text-gray-600">
+            Complete costume guide with curated outfit pieces and accessories
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Outfit Collage */}
           <div>
@@ -71,10 +81,10 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
                 )}
               </div>
 
-              {/* Outfit Title and Description */}
+              {/* Outfit Description */}
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  {outfit.name}
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Best {outfit.name} Costume Guide
                 </h2>
                 {outfit.description && (
                   <p className="text-gray-600">{outfit.description}</p>
@@ -105,7 +115,7 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
           {/* Right Column - Items List */}
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-              Outfit Items
+              {outfit.name} Outfit Items
             </h2>
 
             {outfit.items.length === 0 ? (

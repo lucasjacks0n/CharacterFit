@@ -63,26 +63,29 @@ export async function generateMetadata({
 
   const description =
     outfit.description ||
-    `${outfit.name} - A ${items.length}-piece outfit ${
-      outfit.occasion ? `for ${outfit.occasion}` : ""
-    } ${outfit.season ? `perfect for ${outfit.season}` : ""}`.trim();
+    `Complete ${outfit.name} costume guide. Get the perfect ${outfit.name} look with our curated outfit pieces, styling tips, and character-inspired accessories. ${
+      outfit.occasion ? `Perfect for ${outfit.occasion}.` : ""
+    } ${outfit.season ? `Ideal for ${outfit.season}.` : ""}`.trim();
 
   return {
-    title: `${outfit.name} - CharacterFits`,
+    title: `How to Dress Like ${outfit.name} | Costume Guide | CharacterFits`,
     description,
     keywords: [
-      outfit.name,
-      "outfit",
-      "character outfit",
+      `${outfit.name} costume`,
+      `how to dress like ${outfit.name}`,
+      `${outfit.name} cosplay`,
+      `${outfit.name} outfit guide`,
+      `DIY ${outfit.name} costume`,
+      `${outfit.name} halloween costume`,
       outfit.occasion || "",
       outfit.season || "",
-      "costume",
-      "clothing",
+      "character costume",
+      "cosplay guide",
     ].filter(Boolean),
     openGraph: {
-      title: `${outfit.name} - CharacterFits`,
+      title: `How to Dress Like ${outfit.name} | Costume Guide`,
       description,
-      type: "website",
+      type: "article",
       images: outfit.imageUrl
         ? [
             {
@@ -96,7 +99,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${outfit.name} - CharacterFits`,
+      title: `How to Dress Like ${outfit.name} | Costume Guide`,
       description,
       images: outfit.imageUrl ? [outfit.imageUrl] : undefined,
     },
@@ -149,7 +152,57 @@ export default async function OutfitPage({
   };
 
   // Structured data for SEO
-  const structuredData = {
+  const baseUrl = "https://characterfits.com";
+
+  // Article Schema
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `How to Dress Like ${outfitWithItems.name}`,
+    description: outfitWithItems.description || `Complete costume guide for ${outfitWithItems.name}`,
+    image: outfitWithItems.imageUrl || outfitWithItems.inspirationPhotoUrl,
+    datePublished: outfitWithItems.createdAt.toISOString(),
+    dateModified: outfitWithItems.createdAt.toISOString(),
+    author: {
+      "@type": "Organization",
+      name: "CharacterFits",
+      url: baseUrl,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "CharacterFits",
+      url: baseUrl,
+    },
+  };
+
+  // BreadcrumbList Schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: baseUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Outfits",
+        item: baseUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: outfitWithItems.name,
+        item: `${baseUrl}/outfits/${slug}`,
+      },
+    ],
+  };
+
+  // ItemList Schema (existing product list)
+  const itemListSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: outfitWithItems.name,
@@ -178,10 +231,20 @@ export default async function OutfitPage({
 
   return (
     <>
-      {/* Structured Data */}
+      {/* Article Schema */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      {/* Breadcrumb Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      {/* Product List Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
       />
       <OutfitContent outfit={outfitWithItems} isAdmin={isAdmin} />
     </>

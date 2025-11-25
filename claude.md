@@ -285,6 +285,14 @@ npm run
 
 ---
 
+## Plans
+
+Always write plans to ./plans directory
+
+
+---
+
 ## Additional Guidelines
 
 (Add other development guidelines here as needed)
+

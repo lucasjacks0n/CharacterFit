@@ -24,6 +24,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Organization Schema for SEO
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "CharacterFits",
+    url: "https://characterfits.com",
+    logo: "https://characterfits.com/logo.png",
+    description: "Character Costume & Cosplay Builder - Create and discover character-inspired costumes and cosplay outfits",
+    sameAs: [
+      // Add social media profiles here when available
+    ],
+  };
+
   return (
     <ClerkProvider>
       <html lang="en">
@@ -42,6 +55,11 @@ export default function RootLayout({
                 gtag('config', 'G-6367C1R2CV');
               `,
             }}
+          />
+          {/* Organization Schema */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
           />
         </head>
         <body
