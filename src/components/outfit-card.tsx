@@ -27,7 +27,7 @@ export function OutfitCard({ outfit, similarity }: OutfitCardProps) {
       className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
     >
       {/* Outfit Photo or Items Preview */}
-      <div className="bg-gray-100 p-4">
+      <div>
         {displayImage ? (
           <div className="aspect-[4/5] bg-white rounded overflow-hidden">
             <img
