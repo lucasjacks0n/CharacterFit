@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { outfits, outfitItems } from "@/db/schema";
 import { sql } from "drizzle-orm";
 import { generateOutfitEmbedding } from "@/lib/embeddings";
+import { generateSlug, ensureUniqueSlug } from "@/lib/deepseek";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,11 +24,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate slug using DeepSeek
+    const baseSlug = await generateSlug(
+      name.trim(),
+      description?.trim() || undefined
+    );
+
+    // Get existing slugs to ensure uniqueness
+    const existingOutfits = await db.select({ slug: outfits.slug }).from(outfits);
+    const existingSlugs = existingOutfits
+      .map((o) => o.slug)
+      .filter((s): s is string => s !== null);
+
+    const uniqueSlug = ensureUniqueSlug(baseSlug, existingSlugs);
+
     // Create the outfit
     const [newOutfit] = await db
       .insert(outfits)
       .values({
         name: name.trim(),
+        slug: uniqueSlug,
         description: description?.trim() || null,
         occasion: occasion?.trim() || null,
         season: season?.trim() || null,

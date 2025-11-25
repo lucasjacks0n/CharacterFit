@@ -174,8 +174,53 @@ const limit = Math.max(requestedLimit, 1);
 
 ---
 
+## Database Migration Best Practices
+
+### Always Use npm Scripts for Database Operations
+
+**CRITICAL:** NEVER run database commands directly. ALWAYS use the npm scripts defined in package.json.
+
+#### Required Commands:
+
+- **Database push**: `npm run db:push` (NOT `npx drizzle-kit push` or `psql` commands)
+- **Generate migration**: `npx drizzle-kit generate` (this is read-only, safe to use)
+- **Database studio**: `npm run db:studio` (if available)
+
+#### Why Use npm Scripts?
+
+1. **Consistent configuration**: npm scripts use the correct environment variables and settings
+2. **Team alignment**: Everyone uses the same commands with the same flags
+3. **Error prevention**: Avoids SSL mode issues, connection string problems, and other configuration errors
+4. **Automation-ready**: Scripts can be updated without changing code/documentation
+
+#### Examples of What NOT to Do:
+
+```bash
+# ❌ BAD - Direct drizzle-kit commands bypass npm configuration
+npx drizzle-kit push
+
+# ❌ BAD - Direct psql commands can have SSL/connection issues
+psql "$DATABASE_URL" -c "ALTER TABLE..."
+
+# ❌ BAD - Manually sourcing .env and running commands
+source .env && npx drizzle-kit push
+```
+
+#### Examples of What TO Do:
+
+```bash
+# ✅ GOOD - Use npm script
+npm run db:push
+
+# ✅ GOOD - Generate migration (read-only operation)
+npx drizzle-kit generate
+
+# ✅ GOOD - Check package.json for available scripts
+npm run
+```
+
+---
+
 ## Additional Guidelines
 
 (Add other development guidelines here as needed)
-
-Whenever you run a psql command you have to use the .env database url, "$DATABASE_URL" will never be available if not
