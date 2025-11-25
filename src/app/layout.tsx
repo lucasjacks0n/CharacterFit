@@ -27,6 +27,23 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
+        <head>
+          {/* Google Analytics */}
+          <script
+            async
+            src="https://www.googletagmanager.com/gtag/js?id=G-6367C1R2CV"
+          />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-6367C1R2CV');
+              `,
+            }}
+          />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
         >
