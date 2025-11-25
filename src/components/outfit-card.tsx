@@ -70,7 +70,7 @@ export function OutfitCard({ outfit, similarity }: OutfitCardProps) {
 
       {/* Outfit Details */}
       <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <h3 className="text-lg text-center font-semibold text-gray-900 mb-2">
           {outfit.name}
         </h3>
         <div className="flex items-center justify-between">
