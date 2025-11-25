@@ -285,6 +285,144 @@ npm run
 
 ---
 
+## AI Generation Security
+
+### CRITICAL: Protect AI Generation Endpoints Behind Admin Authentication
+
+**MANDATORY RULE:** Any AI generation endpoints or features that can be abused (high API costs, rate limiting concerns, resource-intensive operations) MUST be protected behind admin authentication.
+
+#### Why This Matters:
+
+1. **Cost Control**: AI API calls (DeepSeek, OpenAI, etc.) cost money and can be expensive at scale
+2. **Abuse Prevention**: Public endpoints can be scraped, spammed, or used to drain resources
+3. **Quality Control**: Admin-only access ensures generated content is reviewed before going live
+4. **Rate Limiting**: Prevents hitting API rate limits from malicious or excessive use
+
+#### Implementation Rules:
+
+**AI Generation Features That MUST Be Admin-Only:**
+- ✅ Description generation with AI
+- ✅ Slug generation with AI
+- ✅ Image generation or manipulation
+- ✅ Bulk content generation
+- ✅ Any feature using external AI APIs (DeepSeek, OpenAI, etc.)
+- ✅ Content summarization or rewriting
+- ✅ Automated SEO content generation
+
+**How to Protect Endpoints:**
+
+```typescript
+// ✅ GOOD - Admin authentication check at the top of API route
+import { auth } from "@clerk/nextjs/server";
+
+export async function POST(request: NextRequest) {
+  // CRITICAL: Admin authentication check
+  const { sessionClaims } = await auth();
+  const isAdmin = sessionClaims?.metadata?.role === "admin";
+
+  if (!isAdmin) {
+    return NextResponse.json(
+      { error: "Unauthorized. Admin access required." },
+      { status: 403 }
+    );
+  }
+
+  // AI generation logic here...
+}
+
+// ❌ BAD - No authentication, anyone can use AI generation
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const result = await generateWithAI(body.prompt); // Publicly accessible!
+  return NextResponse.json({ result });
+}
+```
+
+**Frontend Implementation:**
+
+```typescript
+// ✅ GOOD - Only show AI generation UI in admin pages
+// File: src/app/admin/outfits/edit/[id]/page.tsx
+const handleGenerateDescription = async () => {
+  const response = await fetch("/api/admin/generate-description", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ outfitName, wikipediaUrl }),
+  });
+  // Handle response...
+};
+
+// ❌ BAD - AI generation available on public pages
+// File: src/app/outfits/[slug]/page.tsx
+// NEVER put AI generation on public-facing pages
+```
+
+#### API Endpoint Naming Convention:
+
+- Admin-protected AI endpoints should be under `/api/admin/*` path
+- Examples:
+  - ✅ `/api/admin/generate-description`
+  - ✅ `/api/admin/generate-slug`
+  - ✅ `/api/admin/bulk-generate`
+  - ❌ `/api/generate-description` (NOT admin-protected)
+
+#### Additional Security Measures:
+
+1. **Rate Limiting**: Consider adding rate limiting even for admin endpoints
+2. **Logging**: Log all AI generation requests for audit trails
+3. **Cost Monitoring**: Monitor AI API usage and set up alerts
+4. **Fallback Handling**: Always have fallback logic if AI generation fails
+5. **Input Validation**: Validate all inputs before sending to AI APIs
+
+#### Example Implementation:
+
+```typescript
+// src/app/api/admin/generate-description/route.ts
+export async function POST(request: NextRequest) {
+  try {
+    // CRITICAL: Admin authentication check
+    const { sessionClaims } = await auth();
+    const isAdmin = sessionClaims?.metadata?.role === "admin";
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: "Unauthorized. Admin access required." },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { outfitName, wikipediaUrl, occasion, season } = body;
+
+    // Input validation
+    if (!outfitName || !outfitName.trim()) {
+      return NextResponse.json(
+        { error: "outfitName is required" },
+        { status: 400 }
+      );
+    }
+
+    // AI generation with error handling
+    const description = await generateOutfitDescription({
+      outfitName: outfitName.trim(),
+      wikipediaContext,
+      occasion: occasion?.trim(),
+      season: season?.trim(),
+    });
+
+    return NextResponse.json({ description });
+  } catch (error) {
+    console.error("Error generating description:", error);
+    return NextResponse.json(
+      { error: "Failed to generate description" },
+      { status: 500 }
+    );
+  }
+}
+```
+
+---
+
 ## Plans
 
 Always write plans to ./plans directory

@@ -21,7 +21,7 @@ interface DeepSeekResponse {
 /**
  * Call DeepSeek API with messages
  */
-async function callDeepSeek(
+export async function callDeepSeek(
   messages: DeepSeekMessage[],
   temperature: number = 0.7
 ): Promise<string> {

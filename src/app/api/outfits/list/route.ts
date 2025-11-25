@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '24', 10)));
     const search = searchParams.get('search')?.trim() || '';
+    const statusParam = searchParams.get('status');
+    const statusFilter = statusParam ? parseInt(statusParam, 10) : null;
 
     const offset = (page - 1) * limit;
 
@@ -25,6 +27,9 @@ export async function GET(request: Request) {
           ilike(outfits.season, `%${search}%`)
         )
       );
+    }
+    if (statusFilter !== null && !isNaN(statusFilter)) {
+      conditions.push(eq(outfits.status, statusFilter));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -47,50 +52,43 @@ export async function GET(request: Request) {
     // Get paginated outfits - approved first, then by missing products count ascending
     let allOutfits;
 
+    // Build WHERE clause for SQL
+    const whereConditions = [];
     if (search) {
       const searchTerm = `%${search}%`;
-      allOutfits = await db.execute(sql`
-        SELECT
-          o.*,
-          (
-            SELECT COUNT(*)
-            FROM missing_products mp
-            WHERE mp.outfit_id = o.id
-              AND mp.status = 'pending'
-          ) as missing_products_count
-        FROM outfits o
-        WHERE (
-          o.name ILIKE ${searchTerm}
-          OR o.description ILIKE ${searchTerm}
-          OR o.occasion ILIKE ${searchTerm}
-          OR o.season ILIKE ${searchTerm}
-        )
-        ORDER BY
-          CASE WHEN o.status = 1 THEN 0 ELSE 1 END,
-          missing_products_count ASC,
-          o.created_at DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `);
-    } else {
-      allOutfits = await db.execute(sql`
-        SELECT
-          o.*,
-          (
-            SELECT COUNT(*)
-            FROM missing_products mp
-            WHERE mp.outfit_id = o.id
-              AND mp.status = 'pending'
-          ) as missing_products_count
-        FROM outfits o
-        ORDER BY
-          CASE WHEN o.status = 1 THEN 0 ELSE 1 END,
-          missing_products_count ASC,
-          o.created_at DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `);
+      whereConditions.push(sql`(
+        o.name ILIKE ${searchTerm}
+        OR o.description ILIKE ${searchTerm}
+        OR o.occasion ILIKE ${searchTerm}
+        OR o.season ILIKE ${searchTerm}
+      )`);
     }
+    if (statusFilter !== null && !isNaN(statusFilter)) {
+      whereConditions.push(sql`o.status = ${statusFilter}`);
+    }
+
+    const whereSQL = whereConditions.length > 0
+      ? sql`WHERE ${sql.join(whereConditions, sql` AND `)}`
+      : sql``;
+
+    allOutfits = await db.execute(sql`
+      SELECT
+        o.*,
+        (
+          SELECT COUNT(*)
+          FROM missing_products mp
+          WHERE mp.outfit_id = o.id
+            AND mp.status = 'pending'
+        ) as missing_products_count
+      FROM outfits o
+      ${whereSQL}
+      ORDER BY
+        CASE WHEN o.status = 1 THEN 0 ELSE 1 END,
+        missing_products_count ASC,
+        o.created_at DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `);
 
     const outfitsRows = (allOutfits as any).rows || allOutfits || [];
 

@@ -23,6 +23,7 @@ export default function EditOutfitPage() {
   const outfitId = params.id as string;
 
   const [outfitName, setOutfitName] = useState("");
+  const [outfitSlug, setOutfitSlug] = useState("");
   const [outfitDescription, setOutfitDescription] = useState("");
   const [occasion, setOccasion] = useState("");
   const [season, setSeason] = useState("");
@@ -43,6 +44,10 @@ export default function EditOutfitPage() {
   const [isDeletingCollage, setIsDeletingCollage] = useState(false);
   const [message, setMessage] = useState("");
   const [collageUrl, setCollageUrl] = useState<string | null>(null);
+
+  // AI Description Generator state
+  const [wikipediaUrl, setWikipediaUrl] = useState("");
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   // Missing products state
   interface MissingProduct {
@@ -72,6 +77,7 @@ export default function EditOutfitPage() {
       if (response.ok) {
         const data = await response.json();
         setOutfitName(data.name);
+        setOutfitSlug(data.slug || "");
         setOutfitDescription(data.description || "");
         setOccasion(data.occasion || "");
         setSeason(data.season || "");
@@ -418,6 +424,50 @@ export default function EditOutfitPage() {
     }
   };
 
+  // Generate AI description with optional Wikipedia context
+  const handleGenerateDescription = async () => {
+    if (!outfitName.trim()) {
+      setMessage("❌ Please enter an outfit name first");
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    setMessage("🤖 Generating AI description...");
+
+    try {
+      const response = await fetch("/api/admin/generate-description", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          outfitId: outfitId,
+          outfitName: outfitName.trim(),
+          wikipediaUrl: wikipediaUrl.trim() || undefined,
+          occasion: occasion.trim() || undefined,
+          season: season.trim() || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || "Failed to generate description");
+      }
+
+      const data = await response.json();
+      setOutfitDescription(data.description);
+      setMessage(
+        `✅ Description generated and saved successfully${
+          data.wikipediaUsed ? " (with Wikipedia context)" : ""
+        }`
+      );
+    } catch (error) {
+      setMessage("❌ Failed to generate description: " + (error as Error).message);
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -456,12 +506,13 @@ export default function EditOutfitPage() {
             Back to Outfits List
           </Link>
 
-          <Link
-            href={`/outfits/${outfitId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
+          {outfitSlug && (
+            <Link
+              href={`/outfits/${outfitSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
             <svg
               className="w-5 h-5 mr-2"
               fill="none"
@@ -482,7 +533,8 @@ export default function EditOutfitPage() {
               />
             </svg>
             View Outfit
-          </Link>
+            </Link>
+          )}
         </div>
 
         <div className="mb-8">
@@ -539,6 +591,68 @@ export default function EditOutfitPage() {
                   />
                 </div>
 
+                {/* AI Description Generator */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-3">
+                    🤖 AI Description Generator
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label
+                        htmlFor="wikipediaUrl"
+                        className="block text-xs font-medium text-gray-700 mb-1"
+                      >
+                        Wikipedia URL (optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="wikipediaUrl"
+                        placeholder="e.g., https://en.wikipedia.org/wiki/Batman"
+                        value={wikipediaUrl}
+                        onChange={(e) => setWikipediaUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Add a Wikipedia URL for factual character context
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGenerateDescription}
+                      disabled={isGeneratingDescription || !outfitName.trim()}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                    >
+                      {isGeneratingDescription ? (
+                        <span className="flex items-center justify-center">
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Generating...
+                        </span>
+                      ) : (
+                        "Generate SEO Description with AI"
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label
                     htmlFor="description"
@@ -552,7 +666,7 @@ export default function EditOutfitPage() {
                     value={outfitDescription}
                     onChange={(e) => setOutfitDescription(e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
 

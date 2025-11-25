@@ -53,11 +53,15 @@ function OutfitsListContent() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || "");
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('search') || "");
 
-  // Update URL when page or search changes
-  const updateURL = (newPage: number, newSearch: string) => {
+  // Status filter - initialize from URL
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all");
+
+  // Update URL when page, search, or status changes
+  const updateURL = (newPage: number, newSearch: string, newStatus: string) => {
     const params = new URLSearchParams();
     if (newPage > 1) params.set('page', newPage.toString());
     if (newSearch) params.set('search', newSearch);
+    if (newStatus && newStatus !== 'all') params.set('status', newStatus);
 
     const queryString = params.toString();
     const newURL = queryString ? `/admin/outfits/list?${queryString}` : '/admin/outfits/list';
@@ -70,16 +74,24 @@ function OutfitsListContent() {
       setDebouncedSearch(searchQuery);
       const newPage = 1; // Reset to page 1 when search changes
       setPage(newPage);
-      updateURL(newPage, searchQuery);
+      updateURL(newPage, searchQuery, statusFilter);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Handle status filter change
+  useEffect(() => {
+    const newPage = 1; // Reset to page 1 when filter changes
+    setPage(newPage);
+    updateURL(newPage, debouncedSearch, statusFilter);
+    fetchOutfits();
+  }, [statusFilter]);
+
   // Update URL when page changes (but not on initial mount)
   useEffect(() => {
     if (page !== parseInt(searchParams.get('page') || '1', 10)) {
-      updateURL(page, debouncedSearch);
+      updateURL(page, debouncedSearch, statusFilter);
     }
   }, [page]);
 
@@ -95,6 +107,7 @@ function OutfitsListContent() {
         page: page.toString(),
         limit: limit.toString(),
         ...(debouncedSearch && { search: debouncedSearch }),
+        ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
       });
 
       const response = await fetch(`/api/outfits/list?${params}`);
@@ -340,17 +353,33 @@ function OutfitsListContent() {
           </div>
         )}
 
-        {/* Search Bar */}
+        {/* Search Bar & Filters */}
         <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mb-4">
             <div className="flex-1">
               <input
                 type="text"
                 placeholder="Search outfits by name, description, occasion, or season..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder:text-gray-400"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="status-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Status:
+              </label>
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+              >
+                <option value="all">All</option>
+                <option value="0">Pending</option>
+                <option value="1">Approved</option>
+                <option value="2">Rejected</option>
+              </select>
             </div>
             {searchQuery && (
               <button
@@ -362,7 +391,7 @@ function OutfitsListContent() {
             )}
           </div>
           {total > 0 && (
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-600">
               Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} of {total} outfits ({approvedCount} approved)
             </p>
           )}
