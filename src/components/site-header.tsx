@@ -24,7 +24,7 @@ export function SiteHeader({
         >
           <div className="flex items-center gap-3">
             <Image
-              src="/logo.png"
+              src="/logo-mask.png"
               alt="CharacterFits Logo"
               width={200}
               height={60}

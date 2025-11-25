@@ -24,12 +24,12 @@ export function OutfitCard({ outfit, similarity }: OutfitCardProps) {
   return (
     <Link
       href={`/outfits/${outfit.slug}`}
-      className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
+      className="rounded-lg overflow-hidden transition-shadow block"
     >
       {/* Outfit Photo or Items Preview */}
       <div>
         {displayImage ? (
-          <div className="aspect-[4/5] bg-white rounded overflow-hidden">
+          <div className="aspect-4/5 overflow-hidden">
             <img
               src={displayImage}
               alt={outfit.name}
@@ -62,7 +62,7 @@ export function OutfitCard({ outfit, similarity }: OutfitCardProps) {
           </div>
         ) : (
           /* No image or items */
-          <div className="aspect-[4/5] bg-gray-200 rounded flex items-center justify-center">
+          <div className="aspect-4/5 bg-gray-200 rounded flex items-center justify-center">
             <span className="text-gray-400">No image</span>
           </div>
         )}

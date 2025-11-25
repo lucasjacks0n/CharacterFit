@@ -30,8 +30,9 @@ export default function RootLayout({
     "@type": "Organization",
     name: "CharacterFits",
     url: "https://characterfits.com",
-    logo: "https://characterfits.com/logo.png",
-    description: "Character Costume & Cosplay Builder - Create and discover character-inspired costumes and cosplay outfits",
+    logo: "https://characterfits.com/logo-mask.png",
+    description:
+      "Character Costume & Cosplay Builder - Create and discover character-inspired costumes and cosplay outfits",
     sameAs: [
       // Add social media profiles here when available
     ],
@@ -59,7 +60,9 @@ export default function RootLayout({
           {/* Organization Schema */}
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(organizationSchema),
+            }}
           />
         </head>
         <body
