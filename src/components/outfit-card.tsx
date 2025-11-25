@@ -2,7 +2,7 @@ import Link from "next/link";
 
 interface OutfitCardProps {
   outfit: {
-    id: number;
+    slug: string;
     name: string;
     imageUrl?: string | null;
     inspirationPhotoUrl?: string | null;
@@ -23,7 +23,7 @@ export function OutfitCard({ outfit, similarity }: OutfitCardProps) {
 
   return (
     <Link
-      href={`/outfits/${outfit.id}`}
+      href={`/outfits/${outfit.slug}`}
       className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
     >
       {/* Outfit Photo or Items Preview */}

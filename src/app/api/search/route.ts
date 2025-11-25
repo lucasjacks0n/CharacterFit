@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     if (type === "outfits" || type === "all") {
       const outfitResults = await db.execute(sql`
         SELECT
-          id,
+          slug,
           name,
           description,
           occasion,
@@ -83,6 +83,7 @@ export async function GET(request: Request) {
           inspiration_photo_url as image_url
         FROM outfits
         WHERE status = 1
+          AND slug IS NOT NULL
           AND (
             name ILIKE ${searchTerm}
             OR description ILIKE ${searchTerm}
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
 
       const rows = (outfitResults as any).rows || outfitResults;
       results.outfits = Array.isArray(rows) ? rows.map((row: any) => ({
-        id: row.id,
+        slug: row.slug,
         name: row.name,
         description: row.description,
         occasion: row.occasion,

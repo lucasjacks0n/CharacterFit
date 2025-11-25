@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { OutfitCard } from "@/components/outfit-card";
 
 interface Outfit {
-  id: number;
+  slug: string;
   name: string;
   description: string | null;
   occasion: string | null;
@@ -71,15 +71,22 @@ export default async function Home({
     .from(outfits)
     .where(eq(outfits.status, 1));
 
-  // Fetch paginated approved outfits
+  // Fetch paginated approved outfits (only those with slugs)
   const allOutfits = await db
-    .select()
+    .select({
+      id: outfits.id, // Only for internal use (fetching items)
+      slug: outfits.slug,
+      name: outfits.name,
+      description: outfits.description,
+      occasion: outfits.occasion,
+      season: outfits.season,
+      imageUrl: outfits.imageUrl,
+      inspirationPhotoUrl: outfits.inspirationPhotoUrl,
+      createdAt: outfits.createdAt,
+    })
     .from(outfits)
-    .where(eq(outfits.status, 1))
-    .orderBy(
-      sql`CASE WHEN ${outfits.status} = 1 THEN 0 ELSE 1 END`,
-      desc(outfits.createdAt)
-    )
+    .where(sql`${outfits.status} = 1 AND ${outfits.slug} IS NOT NULL`)
+    .orderBy(desc(outfits.createdAt))
     .limit(limit)
     .offset(offset);
 
@@ -104,7 +111,13 @@ export default async function Home({
         .where(eq(outfitItems.outfitId, outfit.id));
 
       return {
-        ...outfit,
+        slug: outfit.slug!,
+        name: outfit.name,
+        description: outfit.description,
+        occasion: outfit.occasion,
+        season: outfit.season,
+        imageUrl: outfit.imageUrl,
+        inspirationPhotoUrl: outfit.inspirationPhotoUrl,
         items,
       };
     })
@@ -152,7 +165,7 @@ export default async function Home({
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {outfitsWithItems.map((outfit) => (
-                <OutfitCard key={outfit.id} outfit={outfit} />
+                <OutfitCard key={outfit.slug} outfit={outfit} />
               ))}
             </div>
 

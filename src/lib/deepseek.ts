@@ -68,22 +68,30 @@ export async function generateSlug(
     return `outfit-${Date.now()}`;
   }
 
-  const systemPrompt = `You are a slug generator for a fashion outfit website. Generate URL-friendly slugs that are:
+  const systemPrompt = `You are a slug generator for a character costume website. Generate URL-friendly slugs that are:
 - 3-5 words maximum
 - Lowercase with hyphens separating words
 - Descriptive and SEO-friendly
 - No special characters except hyphens
 - Based on the outfit name and description
+- NEVER use the word "outfit", "costume", or "look" in the slug (it's redundant since all pages are outfits)
+- Focus on the character name, style, or theme
 
 Examples:
+Input: "Mr. Peanut"
+Output: mr-peanut
+
 Input: "Casual Summer Beach Look"
-Output: casual-summer-beach-look
+Output: casual-summer-beach
 
-Input: "Formal Business Meeting Attire"
-Output: formal-business-meeting-attire
+Input: "Squid Game Guard"
+Output: squid-game-guard
 
-Input: "Cozy Winter Evening Outfit"
-Output: cozy-winter-evening-outfit
+Input: "Elon Musk Tech Streetwear Outfit"
+Output: elon-musk-tech-streetwear
+
+Input: "Wednesday Addams from Wednesday"
+Output: wednesday-addams
 
 Only respond with the slug itself, nothing else.`;
 

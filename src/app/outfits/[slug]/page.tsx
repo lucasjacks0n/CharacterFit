@@ -34,16 +34,15 @@ interface OutfitWithItems {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const outfitId = parseInt(id);
+  const { slug } = await params;
 
-  // Fetch outfit details
+  // Fetch outfit details by slug
   const [outfit] = await db
     .select()
     .from(outfits)
-    .where(eq(outfits.id, outfitId))
+    .where(eq(outfits.slug, slug))
     .limit(1);
 
   if (!outfit) {
@@ -60,7 +59,7 @@ export async function generateMetadata({
     })
     .from(outfitItems)
     .innerJoin(clothingItems, eq(outfitItems.clothingItemId, clothingItems.id))
-    .where(eq(outfitItems.outfitId, outfitId));
+    .where(eq(outfitItems.outfitId, outfit.id));
 
   const description =
     outfit.description ||
@@ -107,20 +106,20 @@ export async function generateMetadata({
 export default async function OutfitPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
-  const outfitId = parseInt(id);
+  const { slug } = await params;
 
   // Check if user is admin
+  console.log("fetch outfit", slug);
   const { sessionClaims } = await auth();
   const isAdmin = sessionClaims?.metadata?.role === "admin";
 
-  // Fetch outfit details
+  // Fetch outfit details by slug
   const [outfit] = await db
     .select()
     .from(outfits)
-    .where(eq(outfits.id, outfitId))
+    .where(eq(outfits.slug, slug))
     .limit(1);
 
   if (!outfit) {
@@ -142,7 +141,7 @@ export default async function OutfitPage({
     })
     .from(outfitItems)
     .innerJoin(clothingItems, eq(outfitItems.clothingItemId, clothingItems.id))
-    .where(eq(outfitItems.outfitId, outfitId));
+    .where(eq(outfitItems.outfitId, outfit.id));
 
   const outfitWithItems: OutfitWithItems = {
     ...outfit,

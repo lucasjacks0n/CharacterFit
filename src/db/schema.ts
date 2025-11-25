@@ -44,7 +44,7 @@ export const clothingItems = pgTable("clothing_items", {
 export const outfits = pgTable("outfits", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  slug: varchar("slug", { length: 255 }).unique(), // URL-friendly identifier (will be set to notNull after backfill)
+  slug: varchar("slug", { length: 255 }).notNull().unique(), // URL-friendly identifier
   description: text("description"),
   occasion: varchar("occasion", { length: 100 }), // e.g., 'casual', 'formal', 'work', 'date'
   season: varchar("season", { length: 50 }), // e.g., 'spring', 'summer', 'fall', 'winter'

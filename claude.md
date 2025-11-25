@@ -2,6 +2,70 @@
 
 ## Database & Security Best Practices
 
+### CRITICAL: Never Expose Sequential IDs to Users
+
+**MANDATORY RULE:** Outfit IDs must NEVER be exposed to users in any client-facing code, URLs, or APIs. Always use slugs for public-facing identifiers.
+
+#### Why This Matters:
+
+1. **Security**: Sequential IDs reveal database size and allow enumeration attacks
+2. **Privacy**: Users can guess valid IDs and access other records
+3. **SEO**: Slugs are descriptive and improve search rankings
+4. **Unpredictability**: AI-generated slugs prevent scraping
+
+#### Implementation Rules:
+
+**Client-Side (Public):**
+- ✅ ALWAYS use `slug` for URLs: `/outfits/casual-summer-beach-outfit`
+- ✅ ALWAYS use `slug` in API responses to users
+- ✅ ALWAYS use `slug` in links and navigation
+- ❌ NEVER expose `id` in any client-facing code
+- ❌ NEVER use `id` in React keys (use `slug` instead)
+
+**Server-Side (Admin Only):**
+- ✅ Use `id` for internal database operations
+- ✅ Use `id` in admin interfaces only
+- ✅ Use `id` for foreign keys and joins
+- ⚠️ Never send `id` to client unless in admin context
+
+#### Code Examples:
+
+```typescript
+// ❌ BAD - Exposes ID to client
+interface OutfitCardProps {
+  outfit: {
+    id: number;  // NEVER expose this
+    name: string;
+  };
+}
+<Link href={`/outfits/${outfit.id}`}>  // WRONG
+
+// ✅ GOOD - Only uses slug
+interface OutfitCardProps {
+  outfit: {
+    slug: string;  // Always use this
+    name: string;
+  };
+}
+<Link href={`/outfits/${outfit.slug}`}>  // CORRECT
+
+// ❌ BAD - Returns ID in API
+SELECT id, name FROM outfits WHERE status = 1
+
+// ✅ GOOD - Returns slug only
+SELECT slug, name FROM outfits WHERE status = 1 AND slug IS NOT NULL
+
+// ✅ GOOD - Internal use only (not sent to client)
+const [outfit] = await db.select({
+  id: outfits.id,  // Used only for joins
+  slug: outfits.slug,
+  name: outfits.name,
+}).from(outfits).where(eq(outfits.slug, slug));
+
+// Then filter out ID before sending to client
+return { slug: outfit.slug, name: outfit.name };
+```
+
 ### Use UUIDs for Public-Facing IDs
 
 **IMPORTANT:** Always use UUIDs (Universally Unique Identifiers) when storing and exposing data, especially in URLs and APIs. Never expose sequential integer IDs to users.

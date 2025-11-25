@@ -19,7 +19,7 @@ interface SearchResult {
     similarity: number;
   }[];
   outfits?: {
-    id: number;
+    slug: string;
     name: string;
     description: string | null;
     occasion: string | null;
@@ -118,7 +118,7 @@ function SearchPageContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {results.outfits.map((outfit) => (
                     <OutfitCard
-                      key={outfit.id}
+                      key={outfit.slug}
                       outfit={{
                         ...outfit,
                         inspirationPhotoUrl: outfit.imageUrl,
