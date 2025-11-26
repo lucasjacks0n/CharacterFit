@@ -11,24 +11,26 @@ interface WikipediaResponse {
 }
 
 /**
- * Extract Wikipedia page title from various URL formats
+ * Extract Wikipedia page title and section from URL
  */
-function extractPageTitle(input: string): string | null {
+function extractPageInfo(input: string): { title: string; section: string | null } | null {
   // Already a title (no URL)
   if (!input.includes('wikipedia.org') && !input.includes('/')) {
-    return input.trim();
+    return { title: input.trim(), section: null };
   }
 
-  // Extract from URL
+  // Extract page title and section anchor from URL
   const patterns = [
-    /wikipedia\.org\/wiki\/([^#?]+)/i,
-    /\/wiki\/([^#?]+)/i,
+    /wikipedia\.org\/wiki\/([^#?]+)(?:#(.+))?/i,
+    /\/wiki\/([^#?]+)(?:#(.+))?/i,
   ];
 
   for (const pattern of patterns) {
     const match = input.match(pattern);
     if (match) {
-      return decodeURIComponent(match[1].replace(/_/g, ' '));
+      const title = decodeURIComponent(match[1].replace(/_/g, ' '));
+      const section = match[2] ? decodeURIComponent(match[2].replace(/_/g, ' ')) : null;
+      return { title, section };
     }
   }
 
@@ -36,24 +38,103 @@ function extractPageTitle(input: string): string | null {
 }
 
 /**
- * Fetch full Wikipedia page content using Wikipedia API
- * Gets complete article text, not just summary
+ * Filter content to a specific section if section name provided
+ */
+function filterToSection(fullText: string, sectionName: string): string {
+  // Wikipedia plain text API preserves section headers like:
+  // === Section Name ===
+  // == Section Name ==
+
+  // Normalize section name for matching (remove underscores, handle spaces)
+  const normalizedSectionName = sectionName.replace(/_/g, ' ').trim();
+  const escapedName = normalizedSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // Match section headers with flexible spacing
+  // Pattern: one or more = signs, optional spaces, section name, optional spaces, one or more = signs
+  const sectionHeaderPattern = new RegExp(
+    `^(={2,})\\s*${escapedName}\\s*\\1\\s*$`,
+    'im'
+  );
+
+  const match = fullText.match(sectionHeaderPattern);
+
+  if (!match) {
+    // Section not found, return full text
+    console.warn(`Section "${sectionName}" not found in Wikipedia content, returning full article`);
+    return fullText;
+  }
+
+  console.log(`Found section: "${match[0].trim()}" at position ${match.index}`);
+
+  // Get the content starting from after the section header
+  const sectionStartIndex = match.index! + match[0].length;
+  const contentAfterSection = fullText.substring(sectionStartIndex);
+
+  // Find the next section header at the SAME or HIGHER level
+  // === is level 3, == is level 2
+  // We want to stop at the next section of same or higher level
+  const sectionLevel = match[1].length; // Number of = signs
+  const nextSectionPattern = new RegExp(`^={2,${sectionLevel}}\\s*.+?\\s*={2,${sectionLevel}}\\s*$`, 'm');
+  const nextSectionMatch = contentAfterSection.match(nextSectionPattern);
+
+  let sectionContent: string;
+
+  if (nextSectionMatch && nextSectionMatch.index !== undefined) {
+    // Extract only until the next section
+    sectionContent = contentAfterSection.substring(0, nextSectionMatch.index).trim();
+    console.log(`Next section found at ${nextSectionMatch.index}: "${nextSectionMatch[0].trim()}"`);
+  } else {
+    // No next section found, take everything until the end
+    sectionContent = contentAfterSection.trim();
+    console.log(`No next section found, taking rest of content`);
+  }
+
+  console.log(`Extracted section "${sectionName}": ${sectionContent.length} chars from ${fullText.length} total`);
+
+  return sectionContent;
+}
+
+/**
+ * Extract intro + early content (before first major section)
+ * Provides more context than summary but less than full article
+ */
+function extractIntroSections(fullText: string): string {
+  // Find the first major section header (== Section ==)
+  // This typically comes after intro paragraphs and early content
+  const majorSectionPattern = /^==\s+.+?\s+==\s*$/m;
+  const match = fullText.match(majorSectionPattern);
+
+  if (match && match.index !== undefined) {
+    // Return everything before the first major section
+    return fullText.substring(0, match.index).trim();
+  }
+
+  // No major sections found, return full text
+  return fullText;
+}
+
+/**
+ * Fetch Wikipedia content using appropriate API
+ * - For full articles: fetches article and returns intro + early sections
+ * - For sections: fetches full article and extracts specific section
  */
 export async function fetchWikipediaSummary(
   urlOrTitle: string
 ): Promise<WikipediaResponse> {
   try {
-    const pageTitle = extractPageTitle(urlOrTitle);
+    const pageInfo = extractPageInfo(urlOrTitle);
 
-    if (!pageTitle) {
+    if (!pageInfo) {
       return {
         success: false,
         error: 'Invalid Wikipedia URL or title',
       };
     }
 
-    // Use Wikipedia Action API with extracts to get full page content
-    const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exsectionformat=plain&titles=${encodeURIComponent(pageTitle)}&origin=*`;
+    const { title: pageTitle, section: sectionName } = pageInfo;
+
+    // Fetch full article with section headers preserved
+    const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exsectionformat=wiki&titles=${encodeURIComponent(pageTitle)}&origin=*`;
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -89,7 +170,7 @@ export async function fetchWikipediaSummary(
     }
 
     // Get the extract (full text content)
-    const fullText = page.extract || '';
+    let fullText = page.extract || '';
 
     if (!fullText) {
       return {
@@ -98,11 +179,27 @@ export async function fetchWikipediaSummary(
       };
     }
 
+    // If section specified, extract that section
+    // Otherwise, extract intro + early sections (before first major section)
+    let content: string;
+    let title: string;
+    let url: string;
+
+    if (sectionName) {
+      content = filterToSection(fullText, sectionName);
+      title = `${page.title} - ${sectionName}`;
+      url = `https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle)}#${encodeURIComponent(sectionName)}`;
+    } else {
+      content = extractIntroSections(fullText);
+      title = page.title || pageTitle;
+      url = `https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle)}`;
+    }
+
     return {
       success: true,
-      title: page.title || pageTitle,
-      summary: fullText,
-      url: `https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle)}`,
+      title,
+      summary: content,
+      url,
     };
   } catch (error) {
     console.error('Error fetching Wikipedia content:', error);

@@ -311,32 +311,68 @@ npm run
 
 **How to Protect Endpoints:**
 
+**✅ PREFERRED METHOD - Use src/proxy.ts (DRY)**
+
+Admin authentication is handled centrally in `src/proxy.ts` for ALL `/api/admin/*` and `/admin/*` routes. No need to add auth checks in individual route files.
+
 ```typescript
-// ✅ GOOD - Admin authentication check at the top of API route
-import { auth } from "@clerk/nextjs/server";
+// src/proxy.ts
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export async function POST(request: NextRequest) {
-  // CRITICAL: Admin authentication check
-  const { sessionClaims } = await auth();
-  const isAdmin = sessionClaims?.metadata?.role === "admin";
+const isProtectedRoute = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
 
-  if (!isAdmin) {
-    return NextResponse.json(
-      { error: "Unauthorized. Admin access required." },
-      { status: 403 }
-    );
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    const { userId, sessionClaims } = await auth();
+
+    if (!userId) {
+      // For API routes, return 403 JSON
+      if (req.nextUrl.pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "Unauthorized. Admin access required." },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL("/sign-in", req.url));
+    }
+
+    // Check if user has admin role in metadata
+    if (sessionClaims?.metadata?.role !== "admin") {
+      // For API routes, return 403 JSON
+      if (req.nextUrl.pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "Unauthorized. Admin access required." },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL("/", req.url));
+    }
   }
+});
+```
 
-  // AI generation logic here...
+**Route Implementation:**
+
+```typescript
+// ✅ GOOD - Admin routes under /api/admin/* are automatically protected by src/proxy.ts
+// src/app/api/admin/generate-description/route.ts
+export async function POST(request: NextRequest) {
+  // NOTE: Admin auth is handled by src/proxy.ts for /api/admin/* routes
+  const body = await request.json();
+  const result = await generateWithAI(body.prompt);
+  return NextResponse.json({ result });
 }
 
 // ❌ BAD - No authentication, anyone can use AI generation
+// src/app/api/generate-description/route.ts (NOT under /api/admin/)
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const result = await generateWithAI(body.prompt); // Publicly accessible!
   return NextResponse.json({ result });
 }
 ```
+
+**IMPORTANT:** All admin authentication is handled in `src/proxy.ts`. Never create `src/middleware.ts` - we use `proxy.ts` for auth middleware.
 
 **Frontend Implementation:**
 

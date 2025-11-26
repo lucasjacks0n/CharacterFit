@@ -24,7 +24,6 @@ export default function EditOutfitPage() {
 
   const [outfitName, setOutfitName] = useState("");
   const [outfitSlug, setOutfitSlug] = useState("");
-  const [outfitDescription, setOutfitDescription] = useState("");
   const [occasion, setOccasion] = useState("");
   const [season, setSeason] = useState("");
   const [status, setStatus] = useState(0);
@@ -48,6 +47,16 @@ export default function EditOutfitPage() {
   // AI Description Generator state
   const [wikipediaUrl, setWikipediaUrl] = useState("");
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+
+  // Outfit Sections state
+  interface OutfitSection {
+    id: number;
+    sectionType: string;
+    heading: string | null;
+    content: string;
+    metaJson: string | null;
+  }
+  const [outfitSections, setOutfitSections] = useState<OutfitSection[]>([]);
 
   // Missing products state
   interface MissingProduct {
@@ -78,7 +87,6 @@ export default function EditOutfitPage() {
         const data = await response.json();
         setOutfitName(data.name);
         setOutfitSlug(data.slug || "");
-        setOutfitDescription(data.description || "");
         setOccasion(data.occasion || "");
         setSeason(data.season || "");
         setStatus(data.status ?? 0);
@@ -95,6 +103,13 @@ export default function EditOutfitPage() {
       if (missingResponse.ok) {
         const missingData = await missingResponse.json();
         setMissingProducts(missingData.products || []);
+      }
+
+      // Fetch outfit sections
+      const sectionsResponse = await fetch(`/api/outfits/${outfitId}/sections`);
+      if (sectionsResponse.ok) {
+        const sectionsData = await sectionsResponse.json();
+        setOutfitSections(sectionsData.sections || []);
       }
     } catch (error) {
       console.error("Failed to fetch outfit:", error);
@@ -146,7 +161,7 @@ export default function EditOutfitPage() {
     }, 1000); // Wait 1 second after user stops typing
 
     return () => clearTimeout(timer);
-  }, [outfitName, outfitDescription, occasion, season, status, selectedItems]);
+  }, [outfitName, occasion, season, status, selectedItems]);
 
   const autoSave = async () => {
     if (!outfitName.trim() || selectedItems.length === 0) return;
@@ -159,7 +174,6 @@ export default function EditOutfitPage() {
         },
         body: JSON.stringify({
           name: outfitName,
-          description: outfitDescription || null,
           occasion: occasion || null,
           season: season || null,
           status: status,
@@ -274,7 +288,6 @@ export default function EditOutfitPage() {
         },
         body: JSON.stringify({
           name: outfitName,
-          description: outfitDescription || null,
           occasion: occasion || null,
           season: season || null,
           status: status,
@@ -455,12 +468,11 @@ export default function EditOutfitPage() {
       }
 
       const data = await response.json();
-      setOutfitDescription(data.description);
-      setMessage(
-        `✅ Description generated and saved successfully${
-          data.wikipediaUsed ? " (with Wikipedia context)" : ""
-        }`
-      );
+
+      // Refresh outfit sections after generation
+      await fetchOutfit();
+
+      setMessage("✅ Content sections generated and saved successfully");
     } catch (error) {
       setMessage("❌ Failed to generate description: " + (error as Error).message);
     } finally {
@@ -647,28 +659,46 @@ export default function EditOutfitPage() {
                           Generating...
                         </span>
                       ) : (
-                        "Generate SEO Description with AI"
+                        "Generate Content Sections with AI"
                       )}
                     </button>
                   </div>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    placeholder="Casual beach outfit for warm weather..."
-                    value={outfitDescription}
-                    onChange={(e) => setOutfitDescription(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder:text-gray-400"
-                  />
-                </div>
+                {/* Generated Content Sections Display */}
+                {outfitSections.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-green-900 mb-3">
+                      ✅ Generated Content Sections
+                    </h3>
+                    <div className="space-y-4">
+                      {outfitSections.map((section) => (
+                        <div key={section.id} className="bg-white rounded p-3 border border-green-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                              {section.sectionType.replace(/_/g, ' ')}
+                            </span>
+                            {section.heading && (
+                              <span className="text-xs text-gray-500">{section.heading}</span>
+                            )}
+                          </div>
+                          {section.sectionType === 'fast_facts' && section.metaJson ? (
+                            <div className="space-y-1">
+                              {JSON.parse(section.metaJson).map((fact: {label: string; value: string}, idx: number) => (
+                                <div key={idx} className="text-xs">
+                                  <span className="font-medium text-gray-700">{fact.label}:</span>{' '}
+                                  <span className="text-gray-600">{fact.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-700 whitespace-pre-wrap">{section.content}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

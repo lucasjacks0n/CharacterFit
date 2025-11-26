@@ -85,7 +85,6 @@ function OutfitsListContent() {
     const newPage = 1; // Reset to page 1 when filter changes
     setPage(newPage);
     updateURL(newPage, debouncedSearch, statusFilter);
-    fetchOutfits();
   }, [statusFilter]);
 
   // Update URL when page changes (but not on initial mount)
@@ -95,10 +94,10 @@ function OutfitsListContent() {
     }
   }, [page]);
 
-  // Fetch outfits when page, limit, or search changes
+  // Fetch outfits when page, limit, search, OR status changes
   useEffect(() => {
     fetchOutfits();
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, statusFilter]);
 
   const fetchOutfits = async () => {
     setIsLoading(true);

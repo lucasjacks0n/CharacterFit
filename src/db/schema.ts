@@ -89,6 +89,20 @@ export const missingProducts = pgTable("missing_products", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Outfit sections table - stores structured content sections for SEO
+export const outfitSections = pgTable("outfit_sections", {
+  id: serial("id").primaryKey(),
+  outfitId: integer("outfit_id")
+    .references(() => outfits.id, { onDelete: "cascade" })
+    .notNull(),
+  sectionType: varchar("section_type", { length: 50 }).notNull(), // e.g., "main_description", "about_character", "fast_facts"
+  heading: varchar("heading", { length: 255 }), // optional: "About Bret Hart", "Fast Facts", etc.
+  content: text("content").notNull(), // HTML/markdown content
+  metaJson: text("meta_json"), // optional: structured data (lists, facts, etc.) as JSON string
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const outfitsRelations = relations(outfits, ({ many }) => ({
   outfitItems: many(outfitItems),

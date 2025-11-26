@@ -30,12 +30,21 @@ interface OutfitWithItems {
   items: ClothingItem[];
 }
 
+interface OutfitSection {
+  id: number;
+  sectionType: string;
+  heading: string | null;
+  content: string;
+  metaJson: string | null;
+}
+
 interface OutfitContentProps {
   outfit: OutfitWithItems;
+  sections: OutfitSection[];
   isAdmin?: boolean;
 }
 
-export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
+export function OutfitContent({ outfit, sections, isAdmin }: OutfitContentProps) {
   const [hoveredItemId, setHoveredItemId] = useState<number | null>(null);
 
   return (
@@ -81,15 +90,18 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
                 )}
               </div>
 
-              {/* Outfit Description */}
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  Best {outfit.name} Costume Guide
-                </h2>
-                {outfit.description && (
-                  <p className="text-gray-600">{outfit.description}</p>
-                )}
-              </div>
+              {/* About Character */}
+              {sections.find((s) => s.sectionType === "about_character") && (
+                <div className="p-6 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                    {sections.find((s) => s.sectionType === "about_character")?.heading ||
+                      `About ${outfit.name}`}
+                  </h2>
+                  <p className="text-gray-700 leading-relaxed">
+                    {sections.find((s) => s.sectionType === "about_character")?.content}
+                  </p>
+                </div>
+              )}
 
               {/* Tags */}
               <div className="p-6">
@@ -112,72 +124,112 @@ export function OutfitContent({ outfit, isAdmin }: OutfitContentProps) {
             </div>
           </div>
 
-          {/* Right Column - Items List */}
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-              {outfit.name} Outfit Items
-            </h2>
+          {/* Right Column - Items List & Content Sections */}
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+                {outfit.name} Outfit Items
+              </h2>
 
-            {outfit.items.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-                <p className="text-gray-600">No items in this outfit</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {outfit.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`rounded-lg shadow-sm overflow-hidden transition-all ${
-                      hoveredItemId === item.id
-                        ? "bg-orange-50"
-                        : "bg-white hover:shadow-md"
-                    }`}
-                    onMouseEnter={() => setHoveredItemId(item.id)}
-                    onMouseLeave={() => setHoveredItemId(null)}
-                  >
-                    <div className="flex">
-                      {/* Item Details */}
-                      <div className="flex-1 p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {item.displayTitle}
-                          </h3>
+              {outfit.items.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                  <p className="text-gray-600">No items in this outfit</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {outfit.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-lg shadow-sm overflow-hidden transition-all ${
+                        hoveredItemId === item.id
+                          ? "bg-orange-50"
+                          : "bg-white hover:shadow-md"
+                      }`}
+                      onMouseEnter={() => setHoveredItemId(item.id)}
+                      onMouseLeave={() => setHoveredItemId(null)}
+                    >
+                      <div className="flex">
+                        {/* Item Details */}
+                        <div className="flex-1 p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {item.displayTitle}
+                            </h3>
 
-                          {/* View Product Button */}
-                          {item.productUrl && (
-                            <a
-                              href={
-                                item.productUrl.includes("amazon.com")
-                                  ? `${item.productUrl}${
-                                      item.productUrl.includes("?") ? "&" : "?"
-                                    }tag=characterfits-20`
-                                  : item.productUrl
-                              }
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-4 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors whitespace-nowrap"
-                            >
-                              View Product
-                            </a>
-                          )}
-                        </div>
+                            {/* View Product Button */}
+                            {item.productUrl && (
+                              <a
+                                href={
+                                  item.productUrl.includes("amazon.com")
+                                    ? `${item.productUrl}${
+                                        item.productUrl.includes("?") ? "&" : "?"
+                                      }tag=characterfits-20`
+                                    : item.productUrl
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors whitespace-nowrap"
+                              >
+                                View Product
+                              </a>
+                            )}
+                          </div>
 
-                        <div className="space-y-1 text-sm text-gray-600">
-                          {item.category && (
-                            <p>
-                              <span className="font-medium">Category:</span>{" "}
-                              {item.category}
-                            </p>
-                          )}
+                          <div className="space-y-1 text-sm text-gray-600">
+                            {item.category && (
+                              <p>
+                                <span className="font-medium">Category:</span>{" "}
+                                {item.category}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Main Description Section - In Right Column Below Items */}
+            {sections.find((s) => s.sectionType === "main_description") && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-3">
+                  Complete {outfit.name} Costume Guide
+                </h2>
+                <p className="text-gray-700 leading-relaxed">
+                  {sections.find((s) => s.sectionType === "main_description")?.content}
+                </p>
               </div>
             )}
           </div>
         </div>
+
+        {/* Fast Facts Section - Full Width Below Grid */}
+        {sections.find((s) => s.sectionType === "fast_facts") && (() => {
+          const fastFactsSection = sections.find((s) => s.sectionType === "fast_facts");
+          const facts = fastFactsSection?.metaJson
+            ? JSON.parse(fastFactsSection.metaJson)
+            : [];
+
+          return (
+            <div className="mt-12 bg-white rounded-lg shadow-sm p-8 border-l-4 border-orange-500">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                {fastFactsSection?.heading || "Fast Facts"}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {facts.map((fact: { label: string; value: string }, idx: number) => (
+                  <div key={idx} className="flex flex-col">
+                    <span className="text-sm font-semibold text-orange-600 uppercase tracking-wide mb-1">
+                      {fact.label}
+                    </span>
+                    <span className="text-gray-700">{fact.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </main>
     </div>
   );

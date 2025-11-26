@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { outfits, outfitItems, clothingItems } from "@/db/schema";
+import { outfits, outfitItems, clothingItems, outfitSections } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -146,6 +146,12 @@ export default async function OutfitPage({
     .innerJoin(clothingItems, eq(outfitItems.clothingItemId, clothingItems.id))
     .where(eq(outfitItems.outfitId, outfit.id));
 
+  // Fetch outfit content sections
+  const sections = await db
+    .select()
+    .from(outfitSections)
+    .where(eq(outfitSections.outfitId, outfit.id));
+
   const outfitWithItems: OutfitWithItems = {
     ...outfit,
     items,
@@ -246,7 +252,7 @@ export default async function OutfitPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
       />
-      <OutfitContent outfit={outfitWithItems} isAdmin={isAdmin} />
+      <OutfitContent outfit={outfitWithItems} sections={sections} isAdmin={isAdmin} />
     </>
   );
 }
