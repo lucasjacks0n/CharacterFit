@@ -468,5 +468,4 @@ Always write plans to ./plans directory
 
 ## Additional Guidelines
 
-(Add other development guidelines here as needed)
-
+Whenever running moondream-station (moondream cli) we need to run it through virtual environmnent which is ve at base directory

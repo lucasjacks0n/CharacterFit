@@ -58,7 +58,7 @@ Break up content into individual pieces for seo
   outfit_sections (
     id           uuid primary key,
     outfit_id    uuid not null references outfits(id) on delete cascade,
-    section_type text not null,      -- e.g. "main_description", "about_character", "key_pieces"
+    section_type text not null,      -- e.g. "costume_guide", "about_character", "key_pieces"
     sort_order   int  not null,      -- controls display order
     heading      text,               -- optional: "About the Character", "Fast Facts", etc.
     content_md   text not null,      -- markdown / rich text

@@ -19,14 +19,17 @@ interface SectionPromptConfig {
 /**
  * Replace template variables in a prompt string
  */
-function replaceVariables(template: string, variables: PromptVariables): string {
+function replaceVariables(
+  template: string,
+  variables: PromptVariables
+): string {
   let result = template;
 
   for (const [key, value] of Object.entries(variables)) {
     if (value !== undefined) {
       // Replace {{variable}} and {variable} formats
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-      result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+      result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value);
     }
   }
 
@@ -34,51 +37,57 @@ function replaceVariables(template: string, variables: PromptVariables): string 
 }
 
 /**
- * Main Description Section - Short overview (3-6 sentences)
+ * Costume Guide Section - Practical how-to for recreating the look (3-6 sentences)
  */
-export const mainDescriptionPrompt: SectionPromptConfig = {
-  systemPrompt: `You are an expert costume copywriter. Your job is to write vivid, accurate, SEO-optimized descriptions.
+export const costumeGuidePrompt: SectionPromptConfig = {
+  systemPrompt: `You are an expert costume stylist writing practical costume guides. Your job is to explain how to recreate iconic looks with vivid, accurate, SEO-optimized descriptions.
 
 Tone:
-- Vivid, confident, modern
-- Cinematic but grounded
-- Conversational without filler
-- No personal references or opinions
+- Practical and instructional
+- Vivid and visual (describe what you see)
+- Modern and accessible
+- Focus on the costume itself, not character backstory
 - Avoid hype clichés ("adrenaline rush," "get the look," etc.)
-- Allow second-person only when setting an overall vibe naturally
 
 SEO & Style Goals:
-- Provide real value and visual clarity
-- Highlight the character's cultural significance
-- Describe visual identity beyond just listing items
-- Prioritize natural keywords around appearance, persona, and outfit
+- Provide actionable styling guidance
+- Describe how costume elements work together
+- Highlight signature visual details and color palettes
+- Focus on the aesthetic and how to achieve it
+- Use natural keywords around costume pieces, colors, textures, and styling
 
 CRITICAL RULE:
-- Use ONLY the information provided in the "Facts" and "Visual Elements" sections
-- Do NOT invent new story details, abilities, plot points, or history
-- Stay accurate to the input`,
+- Focus on the COSTUME and VISUAL ELEMENTS - not character biography
+- Do NOT start with character descriptions (that's handled elsewhere)
+- Use ONLY the provided costume items and visual details
+- Stay practical and style-focused`,
 
-  userPromptTemplate: `Write a main costume description for {outfit_name}.
+  userPromptTemplate: `Write a practical costume guide for {outfit_name}.
 
 Output: 3-6 sentences total.
 
 Structure:
-- Begin with a concise character overview: who they are and why they're iconic (based on Facts)
-- Describe the character's visual identity and how it reflects their persona
-- Integrate the Visual Elements into a natural, flowing description of the outfit
-- Capture the mood, presence, or essence the costume conveys
-- End with a sentence that reinforces the character's distinctive energy
+- Start with the signature visual aesthetic or color palette
+- Describe the foundation pieces and how they create the iconic look
+- Explain how key costume elements work together (layering, styling, etc.)
+- Highlight distinctive details (textures, accessories, styling choices)
+- End with the overall vibe or presence the costume achieves
 
-Facts:
-{{facts}}
-
-Visual Elements:
+Available Costume Items:
 {{list_of_costume_items}}
 
 Visual Description:
-{{moondream_description}}`,
+{{moondream_description}}
 
-  variables: ['outfit_name', 'facts', 'list_of_costume_items', 'moondream_description']
+Character Context (for accuracy only - do not retell their story):
+{{facts}}`,
+
+  variables: [
+    "outfit_name",
+    "facts",
+    "list_of_costume_items",
+    "moondream_description",
+  ],
 };
 
 /**
@@ -110,7 +119,7 @@ Structure:
 Wikipedia Context:
 {{facts}}`,
 
-  variables: ['outfit_name', 'facts']
+  variables: ["outfit_name", "facts"],
 };
 
 /**
@@ -149,7 +158,7 @@ Wikipedia Context:
 Visual Elements:
 {{list_of_costume_items}}`,
 
-  variables: ['outfit_name', 'facts', 'list_of_costume_items']
+  variables: ["outfit_name", "facts", "list_of_costume_items"],
 };
 
 /**
@@ -160,14 +169,16 @@ export function buildPrompt(
   variables: PromptVariables
 ): { system: string; user: string } {
   // Validate required variables are present
-  const missingVars = config.variables.filter(v => !variables[v]);
+  const missingVars = config.variables.filter((v) => !variables[v]);
   if (missingVars.length > 0) {
-    console.warn(`Missing required variables for prompt: ${missingVars.join(', ')}`);
+    console.warn(
+      `Missing required variables for prompt: ${missingVars.join(", ")}`
+    );
   }
 
   return {
     system: config.systemPrompt,
-    user: replaceVariables(config.userPromptTemplate, variables)
+    user: replaceVariables(config.userPromptTemplate, variables),
   };
 }
 
@@ -191,7 +202,7 @@ Tone Guidelines:
 CRITICAL OUTPUT REQUIREMENT:
 You must return ONLY valid JSON (no markdown, no code blocks, no explanations) with this exact structure:
 {
-  "mainDescription": "string - 3-6 sentences",
+  "costumeGuide": "string - 3-6 sentences",
   "aboutCharacter": "string - single paragraph, 4-6 sentences",
   "fastFacts": [
     {"label": "string", "value": "string"},
@@ -215,12 +226,13 @@ Visual Description:
 
 === SECTION REQUIREMENTS ===
 
-1. MAIN DESCRIPTION (mainDescription - 3-6 sentences):
-   - Begin with concise character overview based on the facts
-   - Describe the character's visual identity and how it reflects their persona
-   - Integrate the costume elements into a natural, flowing description
-   - Capture the mood, presence, or essence the costume conveys
-   - End with a sentence that reinforces the character's distinctive energy
+1. COSTUME GUIDE (costumeGuide - 3-6 sentences):
+   - Start with the signature visual aesthetic or color palette
+   - Describe the foundation pieces and how they create the iconic look
+   - Explain how key costume elements work together (layering, styling, etc.)
+   - Highlight distinctive details (textures, accessories, styling choices)
+   - End with the overall vibe or presence the costume achieves
+   - IMPORTANT: Focus on the COSTUME itself, NOT character biography
 
 2. ABOUT CHARACTER (aboutCharacter - single paragraph, 4-6 sentences):
    - Who the character is and their role
@@ -242,7 +254,12 @@ Visual Description:
 
 Return ONLY the JSON object. No additional text or formatting.`,
 
-  variables: ['outfit_name', 'facts', 'list_of_costume_items', 'moondream_description']
+  variables: [
+    "outfit_name",
+    "facts",
+    "list_of_costume_items",
+    "moondream_description",
+  ],
 };
 
 /**
@@ -251,15 +268,18 @@ Return ONLY the JSON object. No additional text or formatting.`,
 export async function generateSection(
   config: SectionPromptConfig,
   variables: PromptVariables,
-  callDeepSeek: (messages: Array<{role: string; content: string}>, temperature?: number) => Promise<string>,
+  callDeepSeek: (
+    messages: Array<{ role: string; content: string }>,
+    temperature?: number
+  ) => Promise<string>,
   temperature: number = 0.7
 ): Promise<string> {
   const { system, user } = buildPrompt(config, variables);
 
   return callDeepSeek(
     [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
+      { role: "system", content: system },
+      { role: "user", content: user },
     ],
     temperature
   );
@@ -270,19 +290,22 @@ export async function generateSection(
  */
 export async function generateAllSections(
   variables: PromptVariables,
-  callDeepSeek: (messages: Array<{role: "system" | "user" | "assistant"; content: string}>, temperature?: number) => Promise<string>,
+  callDeepSeek: (
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    temperature?: number
+  ) => Promise<string>,
   temperature: number = 0.7
 ): Promise<{
-  mainDescription: string;
+  costumeGuide: string;
   aboutCharacter: string;
-  fastFacts: Array<{label: string; value: string}>;
+  fastFacts: Array<{ label: string; value: string }>;
 }> {
   const { system, user } = buildPrompt(combinedContentPrompt, variables);
 
   const response = await callDeepSeek(
     [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
+      { role: "system", content: system },
+      { role: "user", content: user },
     ],
     temperature
   );
@@ -292,14 +315,20 @@ export async function generateAllSections(
     const parsed = JSON.parse(response);
 
     // Validate the structure
-    if (!parsed.mainDescription || !parsed.aboutCharacter || !Array.isArray(parsed.fastFacts)) {
-      throw new Error('Invalid response structure');
+    if (
+      !parsed.costumeGuide ||
+      !parsed.aboutCharacter ||
+      !Array.isArray(parsed.fastFacts)
+    ) {
+      throw new Error("Invalid response structure");
     }
 
     return parsed;
   } catch (error) {
-    console.error('Failed to parse combined prompt response:', error);
-    console.error('Raw response:', response);
-    throw new Error('Failed to generate content sections: invalid JSON response');
+    console.error("Failed to parse combined prompt response:", error);
+    console.error("Raw response:", response);
+    throw new Error(
+      "Failed to generate content sections: invalid JSON response"
+    );
   }
 }

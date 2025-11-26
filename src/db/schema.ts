@@ -95,7 +95,7 @@ export const outfitSections = pgTable("outfit_sections", {
   outfitId: integer("outfit_id")
     .references(() => outfits.id, { onDelete: "cascade" })
     .notNull(),
-  sectionType: varchar("section_type", { length: 50 }).notNull(), // e.g., "main_description", "about_character", "fast_facts"
+  sectionType: varchar("section_type", { length: 50 }).notNull(), // e.g., "costume_guide", "about_character", "fast_facts"
   heading: varchar("heading", { length: 255 }), // optional: "About Bret Hart", "Fast Facts", etc.
   content: text("content").notNull(), // HTML/markdown content
   metaJson: text("meta_json"), // optional: structured data (lists, facts, etc.) as JSON string
@@ -124,9 +124,12 @@ export const outfitItemsRelations = relations(outfitItems, ({ one }) => ({
   }),
 }));
 
-export const missingProductsRelations = relations(missingProducts, ({ one }) => ({
-  outfit: one(outfits, {
-    fields: [missingProducts.outfitId],
-    references: [outfits.id],
-  }),
-}));
+export const missingProductsRelations = relations(
+  missingProducts,
+  ({ one }) => ({
+    outfit: one(outfits, {
+      fields: [missingProducts.outfitId],
+      references: [outfits.id],
+    }),
+  })
+);

@@ -29,26 +29,36 @@ export async function callDeepSeek(
     throw new Error("DEEPSEEK_API_KEY is not set in environment variables");
   }
 
-  const response = await fetch(DEEPSEEK_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages,
-      temperature,
-    }),
-  });
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages,
+        temperature,
+      }),
+      signal: AbortSignal.timeout(120000), // 2 minute timeout
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`DeepSeek API error: ${response.status} - ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DeepSeek API error: ${response.status} - ${error}`);
+    }
+
+    const data: DeepSeekResponse = await response.json();
+    return data.choices[0]?.message?.content || "";
+  } catch (error: any) {
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      throw new Error(
+        "DeepSeek API request timed out after 2 minutes. The request may be too complex or the service may be slow."
+      );
+    }
+    throw error;
   }
-
-  const data: DeepSeekResponse = await response.json();
-  return data.choices[0]?.message?.content || "";
 }
 
 /**

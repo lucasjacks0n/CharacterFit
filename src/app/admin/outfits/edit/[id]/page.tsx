@@ -495,6 +495,23 @@ export default function EditOutfitPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      {/* Message Toast - Fixed at top */}
+      {message && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full px-4">
+          <div
+            className={`p-4 rounded-md shadow-lg ${
+              message.includes("❌")
+                ? "bg-red-50 text-red-800 border border-red-200"
+                : message.includes("✅")
+                ? "bg-green-50 text-green-800 border border-green-200"
+                : "bg-blue-50 text-blue-800 border border-blue-200"
+            }`}
+          >
+            {message}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto">
         {/* Back to List */}
         <div className="flex items-center justify-between mb-6">
@@ -1046,21 +1063,6 @@ export default function EditOutfitPage() {
                     {isDeletingCollage ? "Deleting..." : "Delete Collage"}
                   </button>
                 )}
-              </div>
-            )}
-
-            {/* Message */}
-            {message && (
-              <div
-                className={`p-4 rounded-md ${
-                  message.includes("❌")
-                    ? "bg-red-50 text-red-800 border border-red-200"
-                    : message.includes("✅")
-                    ? "bg-green-50 text-green-800 border border-green-200"
-                    : "bg-blue-50 text-blue-800 border border-blue-200"
-                }`}
-              >
-                {message}
               </div>
             )}
           </div>

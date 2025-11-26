@@ -13,7 +13,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "moondream": "./ve/bin/moondream-station",
+    "test:moondream": "npx dotenv -- npx tsx scripts/test-moondream-integration.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.35.1",
